@@ -1,0 +1,7 @@
+pandas
+numpy
+finta
+matplotlib
+scipy
+requests
+websocket
