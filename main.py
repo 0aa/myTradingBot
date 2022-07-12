@@ -1,8 +1,9 @@
 import json
 import time
-
+import copy
 import numpy as np
 import pandas as pd
+import requests
 import statsmodels.api as sm
 import websocket
 from multiprocessing import Process, Queue
@@ -12,7 +13,6 @@ import threading
 # To find a slope of price line
 def indSlope(series, n):
     array_sl = [j * 0 for j in range(n - 1)]
-
     for j in range(n, len(series) + 1):
         y = series[j - n:j]
         x = np.array(range(n))
@@ -24,21 +24,6 @@ def indSlope(series, n):
         array_sl.append(results.params[-1])
     slope_angle = (np.rad2deg(np.arctan(np.array(array_sl))))
     return np.array(slope_angle)
-
-
-# generate data frame with all needed data
-def PrepareDF(DF):
-    ohlc = DF.iloc[:, [0, 1, 2, 3, 4, 5]]
-    ohlc.columns = ["date", "open", "high", "low", "close", "volume"]
-    ohlc = ohlc.set_index('date')
-    df = indATR(ohlc, 14).reset_index()
-    df['slope'] = indSlope(df['close'], 5)
-    df['channel_max'] = df['high'].rolling(10).max()
-    df['channel_min'] = df['low'].rolling(10).min()
-    df['position_in_channel'] = (df['close'] - df['channel_min']) / (df['channel_max'] - df['channel_min'])
-    df = df.set_index('date')
-    df = df.reset_index()
-    return (df)
 
 
 # find local mimimum / local maximum
@@ -85,6 +70,7 @@ def indATR(source_DF, n):
 
 
 # generate data frame with all needed data
+# this is just one specific strategy func
 def PrepareDF(DF):
     ohlc = DF.iloc[:, [0, 1, 2, 3, 4, 5]]
     ohlc.columns = ["date", "open", "high", "low", "close", "volume"]
@@ -96,65 +82,117 @@ def PrepareDF(DF):
     df['position_in_channel'] = (df['close'] - df['channel_min']) / (df['channel_max'] - df['channel_min'])
     df = df.set_index('date')
     df = df.reset_index()
-    return (df)
+    return df
 
 
 def raw_data(path):
     return pd.read_csv(path)
 
 
-def stream_data(socket):
-    websocket.enableTrace(False)
-    ws = websocket.WebSocketApp(socket, on_message=onMessage, on_close=onClose)
+# process websocket data and append it to the initial-data dataframe
+def on_message(ws, message):
+    global df
+    j = json.loads(message)['k']
+    if j['x']:
+        temp_df = pd.DataFrame([[j['T'], j['o'], j['h'], j['l'], j['c'], j['v']]],
+                               columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        temp_df['timestamp'] = pd.to_datetime(j['T'] // 1000, unit='s')
+        temp_df['open'] = temp_df['open'].astype(float)
+        temp_df['high'] = temp_df['high'].astype(float)
+        temp_df['low'] = temp_df['low'].astype(float)
+        temp_df['close'] = temp_df['close'].astype(float)
+        temp_df['volume'] = temp_df['volume'].astype(float)
+        df.drop(index=df.index[0],
+                axis=0,
+                inplace=True)
+        df = pd.concat([df, temp_df], sort=False, ignore_index=True)
+        df.reset_index(drop=True)
+
+
+def on_close(ws):
+    print('### closed ###')
+
+
+# receive real-time updates from websocket
+def receive_stream_data(symbol, timeframe):
+    socket = f'wss://stream.binance.us:9443/ws/{symbol}@kline_{timeframe}'
+    ws = websocket.WebSocketApp(socket, on_message=on_message, on_close=on_close)
     ws.run_forever()
 
 
-def onMessage(ws, message):
+# process the (stream) data
+# determine if we need to close or open a position
+def process_data():
     global df
-    json_message = json.loads(message)['k']
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(json_message['T'] // 1000))
-    openP = json_message['o']
-    highP = json_message['h']
-    lowP = json_message['l']
-    closeP = json_message['c']
-    volume = json_message['v']
-    df2 = pd.DataFrame([[timestamp, openP, highP, lowP, closeP, volume]],
-                       columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-    df = pd.concat([df, df2], sort=False, ignore_index=True)
-
-
-def onClose(ws):
-    print("#closed#")
-
-
-def print_my():
-    global df
+    global deals_array
+    old_df = copy.copy(df)
     while True:
-        print(df)
-        time.sleep(4)
+        if old_df.equals(df):
+            '''compare the copy of the initial dataframe
+            with the original to check if it got any updates '''
+            time.sleep(10)
+        else:
+            ''' the updated dataframe is "old" now'''
+            old_df = copy.copy(df)
+
+            # strategy specific
+            prepared_df = PrepareDF(df)
+
+            signal, price = check_if_signal(prepared_df)
+            check_if_close(deals_array, price)
+
+            if signal:
+                print(signal, price)
+                open_pos(signal, price)
+                print('deals: ', deals_array.head())
+            time.sleep(10)
+
+
+def get_initial_klines(symbol, timeframe, limit=500):
+    x = requests.get(f'https://api.binance.us/api/v3/klines?symbol={symbol}&limit={str(limit)}&interval={timeframe}')
+    initial_data = pd.DataFrame(x.json())
+    initial_data.drop([6, 7, 8, 9, 10, 11], axis=1, inplace=True)
+    initial_data.rename(columns={0: 'timestamp',
+                                 1: 'open',
+                                 2: 'high',
+                                 3: 'low',
+                                 4: 'close',
+                                 5: 'volume'}, inplace=True)
+    initial_data['timestamp'] = pd.to_datetime(initial_data['timestamp'] // 1000, unit='s')
+    initial_data['open'] = initial_data['open'].astype(float)
+    initial_data['high'] = initial_data['high'].astype(float)
+    initial_data['low'] = initial_data['low'].astype(float)
+    initial_data['close'] = initial_data['close'].astype(float)
+    initial_data['volume'] = initial_data['volume'].astype(float)
+    return initial_data
 
 
 if __name__ == "__main__":
-    API_KEY = 'HO0PUVKW0S8C5V0D'
-    INTERVAL = '5min'
-    SYMBOL = 'ETH'
-    RAW_URL = f"https://www.alphavantage.co/query?function=CRYPTO_INTRADAY&symbol={SYMBOL}&market=USD&interval={INTERVAL}&apikey={API_KEY}&datatype=csv&outputsize=full"
-    SOCKET = f"wss://stream.binance.com:9443/ws/{SYMBOL.lower()}usdt@kline_1m"
+    global df
+    global profit_stop
+    global deals_array
+    '''[X, Y], where X is percent of price to calculate stop/profit
+    and Y is percent of lot to close position i.e. [2,10] - 2% of price and 20% of lot left(!)
+    last Y always should be 100 - since we want to close 100% of the lot '''
+    profit_stop = {'take_profit': [[2, 20], [3, 20], [4, 20], [5, 20], [6, 100]],
+                   'stop_loss': [[1, 50], [2, 100], ]}  # <====try to optimize
+    deals_array = pd.DataFrame(columns=
+                               ['pos_id', 'pos_type', 'open_price', 'volume',
+                                'volume_left', 'profit_grid', 'stop_grid', 'status', 'profit'])
+    # api_key = "ThZW140lmXAIen9huJ4ycQ0JzA5dQnofoQ6eP06BsuWZSU8lnohN9IofMjnYMRXW"
+    # secret_key = "MpUPVpfELbhm86qc0qPDrf8LNKEYGmZfpnsWA7HQHdiu7fK3UY50rcgXrCvMh2lx"
+    api_url = 'https://api.binance.us'
+    SYMBOL = 'ETHUSDT'
+    LIMIT = 100
+    TIMEFRAME = '5m'
 
-    df = pd.DataFrame(columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-    df5 = raw_data(RAW_URL)
-    df = df5.copy()[::-1]
+    df = get_initial_klines(SYMBOL, TIMEFRAME, LIMIT)
 
-    p0 = threading.Thread(target=stream_data, args=(SOCKET,))
-    p1 = threading.Thread(target=print_my)
-    p0.start()
-    p1.start()
-    p0.join()
-    p1.join()
-    print("Hello")
+    t = threading.Thread(name='receive_stream_data', target=receive_stream_data, args=(SYMBOL.lower(), TIMEFRAME,))
+    w = threading.Thread(name='process_data', target=process_data)
 
-'''    
-    p1 = Process(target=multi_threading, args=(deep, temp_proxy, url, title, headless))  # yt_search
-    p1.start()
-    p1.join()
-'''
+    w.start()
+    t.start()
+
+    w.join()
+    t.join()
