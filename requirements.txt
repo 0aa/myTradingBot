@@ -4,5 +4,5 @@ finta
 matplotlib
 scipy
 requests
-websocket
-
+websocket-client
+statsmodels

@@ -1,97 +1,36 @@
 import json
 import time
 import copy
-import numpy as np
 import pandas as pd
 import requests
-import statsmodels.api as sm
 import websocket
-from multiprocessing import Process, Queue
 import threading
 
-
-# To find a slope of price line
-def indSlope(series, n):
-    array_sl = [j * 0 for j in range(n - 1)]
-    for j in range(n, len(series) + 1):
-        y = series[j - n:j]
-        x = np.array(range(n))
-        x_sc = (x - x.min()) / (x.max() - x.min())
-        y_sc = (y - y.min()) / (y.max() - y.min())
-        x_sc = sm.add_constant(x_sc)
-        model = sm.OLS(y_sc, x_sc)
-        results = model.fit()
-        array_sl.append(results.params[-1])
-    slope_angle = (np.rad2deg(np.arctan(np.array(array_sl))))
-    return np.array(slope_angle)
+from strategies.channel_slope import channel_slope
+from backtest.backtest import
 
 
-# find local mimimum / local maximum
-def isLCC(DF, i):
-    df = DF.copy()
-    LCC = 0
-
-    if df['close'][i] <= df['close'][i + 1] and df['close'][i] <= df['close'][i - 1] < df['close'][i + 1]:
-        # найдено Дно
-        LCC = i - 1
-    return LCC
 
 
-def isHCC(DF, i):
-    df = DF.copy()
-    HCC = 0
-    if df['close'][i] >= df['close'][i + 1] and df['close'][i] >= df['close'][i - 1] > df['close'][i + 1]:
-        # найдена вершина
-        HCC = i
-    return HCC
-
-
-def getMaxMinChannel(DF, n):
-    maxx = 0
-    minn = DF['low'].max()
-    for i in range(1, n):
-        if maxx < DF['high'][len(DF) - i]:
-            maxx = DF['high'][len(DF) - i]
-        if minn > DF['low'][len(DF) - i]:
-            minn = DF['low'][len(DF) - i]
-    return maxx, minn
-
-
-# True Range and Average True Range indicator
-def indATR(source_DF, n):
-    df = source_DF.copy()
-    df['H-L'] = abs(df['high'] - df['low'])
-    df['H-PC'] = abs(df['high'] - df['close'].shift(1))
-    df['L-PC'] = abs(df['low'] - df['close'].shift(1))
-    df['TR'] = df[['H-L', 'H-PC', 'L-PC']].max(axis=1, skipna=False)
-    df['ATR'] = df['TR'].rolling(n).mean()
-    df_temp = df.drop(['H-L', 'H-PC', 'L-PC'], axis=1)
-    return df_temp
-
-
-# generate data frame with all needed data
-# this is just one specific strategy func
-def PrepareDF(DF):
-    ohlc = DF.iloc[:, [0, 1, 2, 3, 4, 5]]
-    ohlc.columns = ["date", "open", "high", "low", "close", "volume"]
-    ohlc = ohlc.set_index('date')
-    df = indATR(ohlc, 14).reset_index()
-    df['slope'] = indSlope(df['close'], 5)
-    df['channel_max'] = df['high'].rolling(10).max()
-    df['channel_min'] = df['low'].rolling(10).min()
-    df['position_in_channel'] = (df['close'] - df['channel_min']) / (df['channel_max'] - df['channel_min'])
-    df = df.set_index('date')
-    df = df.reset_index()
-    return df
-
-
-def raw_data(path):
-    return pd.read_csv(path)
+# check if we need to close existing position at the current price
+# df - dataFrame with existing positions
+def check_if_close(temp_df, price):
+    open_poses = temp_df.index[temp_df['status'] == 'open'].tolist()
+    # pass grid type
+    for i in open_poses:
+        pos_type = temp_df.loc[i]['pos_type']
+        match pos_type:
+            case 'long':
+                close_if_below('stop_grid', price, i)
+                close_if_above('profit_grid', price, i)
+            case 'short':
+                close_if_below('profit_grid', price, i)
+                close_if_above('stop_grid', price, i)
 
 
 # process websocket data and append it to the initial-data dataframe
 def on_message(ws, message):
-    global df
+    global current_df
     j = json.loads(message)['k']
     if j['x']:
         temp_df = pd.DataFrame([[j['T'], j['o'], j['h'], j['l'], j['c'], j['v']]],
@@ -102,11 +41,11 @@ def on_message(ws, message):
         temp_df['low'] = temp_df['low'].astype(float)
         temp_df['close'] = temp_df['close'].astype(float)
         temp_df['volume'] = temp_df['volume'].astype(float)
-        df.drop(index=df.index[0],
-                axis=0,
-                inplace=True)
-        df = pd.concat([df, temp_df], sort=False, ignore_index=True)
-        df.reset_index(drop=True)
+        current_df.drop(index=current_df.index[0],
+                        axis=0,
+                        inplace=True)
+        current_df = pd.concat([current_df, temp_df], sort=False, ignore_index=True)
+        current_df.reset_index(drop=True)
 
 
 def on_close(ws):
@@ -122,28 +61,26 @@ def receive_stream_data(symbol, timeframe):
 
 # process the (stream) data
 # determine if we need to close or open a position
-def process_data():
-    global df
-    global deals_array
-    old_df = copy.copy(df)
+def process_data(current_df, deals_array):
+
+    old_df = copy.copy(current_df)
     while True:
-        if old_df.equals(df):
+        if old_df.equals(current_df):
             '''compare the copy of the initial dataframe
             with the original to check if it got any updates '''
             time.sleep(10)
         else:
             ''' the updated dataframe is "old" now'''
-            old_df = copy.copy(df)
+            old_df = copy.copy(current_df)
 
-            # strategy specific
-            prepared_df = PrepareDF(df)
+            # all the indicators suppose to return signal and current or future price
+            signal, price = channel_slope(old_df)
 
-            signal, price = check_if_signal(prepared_df)
             check_if_close(deals_array, price)
 
             if signal:
                 print(signal, price)
-                open_pos(signal, price)
+                # open_pos(signal, price)
                 print('deals: ', deals_array.head())
             time.sleep(10)
 
@@ -186,7 +123,7 @@ if __name__ == "__main__":
     LIMIT = 100
     TIMEFRAME = '5m'
 
-    df = get_initial_klines(SYMBOL, TIMEFRAME, LIMIT)
+    current_df = get_initial_klines(SYMBOL, TIMEFRAME, LIMIT)
 
     t = threading.Thread(name='receive_stream_data', target=receive_stream_data, args=(SYMBOL.lower(), TIMEFRAME,))
     w = threading.Thread(name='process_data', target=process_data)
