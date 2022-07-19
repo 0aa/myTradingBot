@@ -7,7 +7,7 @@ import websocket
 import threading
 
 from strategies.channel_slope import channel_slope
-from backtest.backtest import
+from helpers.helpers import close_if_below, close_if_above
 
 
 
@@ -62,9 +62,9 @@ def receive_stream_data(symbol, timeframe):
 # process the (stream) data
 # determine if we need to close or open a position
 def process_data(current_df, deals_array):
-
     old_df = copy.copy(current_df)
     while True:
+        print(current_df.tail())
         if old_df.equals(current_df):
             '''compare the copy of the initial dataframe
             with the original to check if it got any updates '''
@@ -105,9 +105,9 @@ def get_initial_klines(symbol, timeframe, limit=500):
 
 
 if __name__ == "__main__":
-    global df
     global profit_stop
     global deals_array
+    global current_df
     '''[X, Y], where X is percent of price to calculate stop/profit
     and Y is percent of lot to close position i.e. [2,10] - 2% of price and 20% of lot left(!)
     last Y always should be 100 - since we want to close 100% of the lot '''
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     current_df = get_initial_klines(SYMBOL, TIMEFRAME, LIMIT)
 
     t = threading.Thread(name='receive_stream_data', target=receive_stream_data, args=(SYMBOL.lower(), TIMEFRAME,))
-    w = threading.Thread(name='process_data', target=process_data)
+    w = threading.Thread(name='process_data', target=process_data, args=(current_df, deals_array,))
 
     w.start()
     t.start()
