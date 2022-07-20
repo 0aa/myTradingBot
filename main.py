@@ -116,15 +116,14 @@ if __name__ == "__main__":
     deals_array = pd.DataFrame(columns=
                                ['pos_id', 'pos_type', 'open_price', 'volume',
                                 'volume_left', 'profit_grid', 'stop_grid', 'status', 'profit'])
-    # api_key = "ThZW140lmXAIen9huJ4ycQ0JzA5dQnofoQ6eP06BsuWZSU8lnohN9IofMjnYMRXW"
-    # secret_key = "MpUPVpfELbhm86qc0qPDrf8LNKEYGmZfpnsWA7HQHdiu7fK3UY50rcgXrCvMh2lx"
+    # api_key = ""
+    # secret_key = ""
     api_url = 'https://api.binance.us'
     SYMBOL = 'ETHUSDT'
     LIMIT = 100
     TIMEFRAME = '5m'
 
-    current_df = get_initial_klines(SYMBOL, TIMEFRAME, LIMIT)
-
+    current_df = get_initial_klines(SYMBOL, TIMEFRAME, LIMIT)  # returns t+ohlc+v
     t = threading.Thread(name='receive_stream_data', target=receive_stream_data, args=(SYMBOL.lower(), TIMEFRAME,))
     w = threading.Thread(name='process_data', target=process_data, args=(current_df, deals_array,))
 
