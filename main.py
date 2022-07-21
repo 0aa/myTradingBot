@@ -10,8 +10,6 @@ from strategies.channel_slope import channel_slope
 from helpers.helpers import close_if_below, close_if_above
 
 
-
-
 # check if we need to close existing position at the current price
 # df - dataFrame with existing positions
 def check_if_close(temp_df, price):

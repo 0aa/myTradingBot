@@ -24,14 +24,14 @@ class Indicators:
             HCC = i
         return HCC
 
-    def getMaxMinChannel(self, DF, n):
+    def getMaxMinChannel(self, df, n):
         maxx = 0
-        minn = DF['low'].max()
+        minn = df['low'].max()
         for i in range(1, n):
-            if maxx < DF['high'][len(DF) - i]:
-                maxx = DF['high'][len(DF) - i]
-            if minn > DF['low'][len(DF) - i]:
-                minn = DF['low'][len(DF) - i]
+            if maxx < df['high'][len(df) - i]:
+                maxx = df['high'][len(df) - i]
+            if minn > df['low'][len(df) - i]:
+                minn = df['low'][len(df) - i]
         return maxx, minn
 
     # True Range and Average True Range indicator
@@ -68,8 +68,8 @@ class Indicators:
     # channel_min
     # position_in_channel
     # DF - dataframe
-    def PrepareDF(self, DF, atr_period=14):
-        ohlc = DF.iloc[:, [0, 1, 2, 3, 4]]
+    def PrepareDF(self, df, atr_period=14):
+        ohlc = df.iloc[:, [0, 1, 2, 3, 4]]
         ohlc.columns = ["timestamp", "open", "high", "low", "close"]
         ohlc = ohlc.set_index('timestamp')
         df = self.indATR(ohlc, atr_period).reset_index()  # <====try to optimize
