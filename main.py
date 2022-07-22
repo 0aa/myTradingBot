@@ -26,104 +26,121 @@ def check_if_close(temp_df, price):
                 close_if_above('stop_grid', price, i)
 
 
-# process websocket data and append it to the initial-data dataframe
-def on_message(ws, message):
-    global current_df
-    j = json.loads(message)['k']
-    if j['x']:
-        temp_df = pd.DataFrame([[j['T'], j['o'], j['h'], j['l'], j['c'], j['v']]],
-                               columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-        temp_df['timestamp'] = pd.to_datetime(j['T'] // 1000, unit='s')
-        temp_df['open'] = temp_df['open'].astype(float)
-        temp_df['high'] = temp_df['high'].astype(float)
-        temp_df['low'] = temp_df['low'].astype(float)
-        temp_df['close'] = temp_df['close'].astype(float)
-        temp_df['volume'] = temp_df['volume'].astype(float)
-        current_df.drop(index=current_df.index[0],
-                        axis=0,
-                        inplace=True)
-        current_df = pd.concat([current_df, temp_df], sort=False, ignore_index=True)
-        current_df.reset_index(drop=True)
 
 
-def on_close(ws):
-    print('### closed ###')
 
 
-# receive real-time updates from websocket
-def receive_stream_data(symbol, timeframe):
-    socket = f'wss://stream.binance.us:9443/ws/{symbol}@kline_{timeframe}'
-    ws = websocket.WebSocketApp(socket, on_message=on_message, on_close=on_close)
-    ws.run_forever()
 
 
 # process the (stream) data
 # determine if we need to close or open a position
-def process_data(current_df, deals_array):
-    old_df = copy.copy(current_df)
+def process_data(obj):
+    old_df = copy.copy(obj.dataframe)
     while True:
-        print(current_df.tail())
-        if old_df.equals(current_df):
+
+        if old_df.equals(obj.dataframe):
             '''compare the copy of the initial dataframe
             with the original to check if it got any updates '''
             time.sleep(10)
         else:
             ''' the updated dataframe is "old" now'''
-            old_df = copy.copy(current_df)
-
+            old_df = copy.copy(obj.dataframe)
             # all the indicators suppose to return signal and current or future price
+
             signal, price = channel_slope(old_df)
-
-            check_if_close(deals_array, price)
-
+            check_if_close(obj.deals_array, price)
             if signal:
                 print(signal, price)
                 # open_pos(signal, price)
-                print('deals: ', deals_array.head())
+                print('deals: ', obj.deals_array.head())
+
             time.sleep(10)
 
 
-def get_initial_klines(symbol, timeframe, limit=500):
-    x = requests.get(f'https://api.binance.us/api/v3/klines?symbol={symbol}&limit={str(limit)}&interval={timeframe}')
-    initial_data = pd.DataFrame(x.json())
-    initial_data.drop([6, 7, 8, 9, 10, 11], axis=1, inplace=True)
-    initial_data.rename(columns={0: 'timestamp',
-                                 1: 'open',
-                                 2: 'high',
-                                 3: 'low',
-                                 4: 'close',
-                                 5: 'volume'}, inplace=True)
-    initial_data['timestamp'] = pd.to_datetime(initial_data['timestamp'] // 1000, unit='s')
-    initial_data['open'] = initial_data['open'].astype(float)
-    initial_data['high'] = initial_data['high'].astype(float)
-    initial_data['low'] = initial_data['low'].astype(float)
-    initial_data['close'] = initial_data['close'].astype(float)
-    initial_data['volume'] = initial_data['volume'].astype(float)
-    return initial_data
+class DataStream:
+
+    def __init__(self, symbol, timeframe, limit):
+        self.symbol = symbol
+        self.timeframe = timeframe
+        self.limit = str(limit)
+        self.dataframe = self.get_initial_klines()
+        self.profit_stop = {}
+        self.deals_array = pd.DataFrame(columns=
+                                        ['pos_id', 'pos_type', 'open_price', 'volume',
+                                         'volume_left', 'profit_grid', 'stop_grid', 'status', 'profit'])
+
+    def get_initial_klines(self):
+        x = requests.get(
+            f'https://api.binance.us/api/v3/klines?symbol={self.symbol}&limit={self.limit}&interval={self.timeframe}')
+        self.dataframe = pd.DataFrame(x.json())
+        self.dataframe.drop([6, 7, 8, 9, 10, 11], axis=1, inplace=True)
+        self.dataframe.rename(columns={0: 'timestamp',
+                                       1: 'open',
+                                       2: 'high',
+                                       3: 'low',
+                                       4: 'close',
+                                       5: 'volume'}, inplace=True)
+        self.dataframe['timestamp'] = pd.to_datetime(self.dataframe['timestamp'] // 1000, unit='s')
+        self.dataframe['open'] = self.dataframe['open'].astype(float)
+        self.dataframe['high'] = self.dataframe['high'].astype(float)
+        self.dataframe['low'] = self.dataframe['low'].astype(float)
+        self.dataframe['close'] = self.dataframe['close'].astype(float)
+        self.dataframe['volume'] = self.dataframe['volume'].astype(float)
+        return self.dataframe
+
+    # process websocket data and append it to the initial-data dataframe
+    def on_message(self, ws, message):
+        j = json.loads(message)['k']
+        if j['x']:
+            temp_df = pd.DataFrame([[j['T'], j['o'], j['h'], j['l'], j['c'], j['v']]],
+                                   columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            temp_df['timestamp'] = pd.to_datetime(j['T'] // 1000, unit='s')
+            temp_df['open'] = temp_df['open'].astype(float)
+            temp_df['high'] = temp_df['high'].astype(float)
+            temp_df['low'] = temp_df['low'].astype(float)
+            temp_df['close'] = temp_df['close'].astype(float)
+            temp_df['volume'] = temp_df['volume'].astype(float)
+            self.dataframe.drop(index=self.dataframe.index[0],
+                                axis=0,
+                                inplace=True)
+            self.dataframe = pd.concat([self.dataframe, temp_df], sort=False, ignore_index=True)
+            self.dataframe.reset_index(drop=True)
+
+    @staticmethod
+    def on_close(ws):
+        print('### closed ###')
+
+    # receive real-time updates from websocket
+    def receive_stream_data(self):
+        socket = f'wss://stream.binance.us:9443/ws/{self.symbol.lower()}@kline_{self.timeframe}'
+        ws = websocket.WebSocketApp(socket, on_message=self.on_message, on_close=self.on_close)
+        ws.run_forever()
+
+    def start(self):
+        self.receive_stream_data()
 
 
 if __name__ == "__main__":
-    global profit_stop
-    global deals_array
-    global current_df
+
     '''[X, Y], where X is percent of price to calculate stop/profit
     and Y is percent of lot to close position i.e. [2,10] - 2% of price and 20% of lot left(!)
     last Y always should be 100 - since we want to close 100% of the lot '''
     profit_stop = {'take_profit': [[2, 20], [3, 20], [4, 20], [5, 20], [6, 100]],
                    'stop_loss': [[1, 50], [2, 100], ]}  # <====try to optimize
-    deals_array = pd.DataFrame(columns=
-                               ['pos_id', 'pos_type', 'open_price', 'volume',
-                                'volume_left', 'profit_grid', 'stop_grid', 'status', 'profit'])
+
     # api_key = ""
     # secret_key = ""
-    api_url = 'https://api.binance.us'
+    # api_url = 'https://api.binance.us'
     SYMBOL = 'ETHUSDT'
     LIMIT = 100
-    TIMEFRAME = '5m'
+    TIMEFRAME = '1m'
 
-    current_df = get_initial_klines(SYMBOL, TIMEFRAME, LIMIT)  # returns t+ohlc+v
-    t = threading.Thread(name='receive_stream_data', target=receive_stream_data, args=(SYMBOL.lower(), TIMEFRAME,))
-    w = threading.Thread(name='process_data', target=process_data, args=(current_df, deals_array,))
+    # create class object with the data we need
+    eth = DataStream(SYMBOL, TIMEFRAME, LIMIT)
+    eth.profit_stop = profit_stop
+
+    t = threading.Thread(name='receive_stream_data', target=eth.start)
+    w = threading.Thread(name='process_data', target=process_data, args=(eth,))
 
     w.start()
     t.start()
