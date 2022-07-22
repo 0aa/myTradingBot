@@ -74,12 +74,13 @@ class Indicators:
     # channel_min
     # position_in_channel
     # DF - dataframe
-    def PrepareDF(self, df, atr_period=14):
+    @classmethod
+    def PrepareDF(cls, df, atr_period=14):
         ohlc = df.iloc[:, [0, 1, 2, 3, 4]]
         ohlc.columns = ["timestamp", "open", "high", "low", "close"]
         ohlc = ohlc.set_index('timestamp')
-        df = self.indATR(ohlc, atr_period).reset_index()  # <====try to optimize
-        df['slope'] = self.indSlope(df['close'], 5)  # <====try to optimize
+        df = cls.indATR(ohlc, atr_period).reset_index()  # <====try to optimize
+        df['slope'] = cls.indSlope(df['close'], 5)  # <====try to optimize
         df['channel_max'] = df['high'].rolling(10).max()  # <====try to optimize
         df['channel_min'] = df['low'].rolling(10).min()  # <====try to optimize
         df['position_in_channel'] = (df['close'] - df['channel_min']) / (df['channel_max'] - df['channel_min'])

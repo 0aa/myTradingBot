@@ -34,11 +34,11 @@ class DataStream:
                                        4: 'close',
                                        5: 'volume'}, inplace=True)
         self.dataframe['timestamp'] = pd.to_datetime(self.dataframe['timestamp'] // 1000, unit='s')
-        self.dataframe['open'] = self.dataframe['open'].astype(float)
-        self.dataframe['high'] = self.dataframe['high'].astype(float)
-        self.dataframe['low'] = self.dataframe['low'].astype(float)
-        self.dataframe['close'] = self.dataframe['close'].astype(float)
-        self.dataframe['volume'] = self.dataframe['volume'].astype(float)
+        self.dataframe = self.dataframe.astype({'open': 'float64',
+                                                'high': 'float64',
+                                                'low': 'float64',
+                                                'close': 'float64',
+                                                'volume': 'float64'})
         return self.dataframe
 
     # process websocket data and append it to the initial-data dataframe
@@ -48,11 +48,11 @@ class DataStream:
             temp_df = pd.DataFrame([[j['T'], j['o'], j['h'], j['l'], j['c'], j['v']]],
                                    columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             temp_df['timestamp'] = pd.to_datetime(j['T'] // 1000, unit='s')
-            temp_df['open'] = temp_df['open'].astype(float)
-            temp_df['high'] = temp_df['high'].astype(float)
-            temp_df['low'] = temp_df['low'].astype(float)
-            temp_df['close'] = temp_df['close'].astype(float)
-            temp_df['volume'] = temp_df['volume'].astype(float)
+            temp_df = temp_df.astype({'open': 'float64',
+                                      'high': 'float64',
+                                      'low': 'float64',
+                                      'close': 'float64',
+                                      'volume': 'float64'})
             self.dataframe.drop(index=self.dataframe.index[0],
                                 axis=0,
                                 inplace=True)
@@ -94,7 +94,6 @@ def check_if_close(temp_df, price):
 def process_data(obj):
     old_df = copy.copy(obj.dataframe)
     while True:
-
         if old_df.equals(obj.dataframe):
             '''compare the copy of the initial dataframe
             with the original to check if it got any updates '''
@@ -103,7 +102,6 @@ def process_data(obj):
             ''' the updated dataframe is "old" now'''
             old_df = copy.copy(obj.dataframe)
             # all the indicators suppose to return signal and current or future price
-
             signal, price = channel_slope(old_df)
             check_if_close(obj.deals_array, price)
 
@@ -126,7 +124,7 @@ if __name__ == "__main__":
     # secret_key = ""
     # api_url = 'https://api.binance.us'
     SYMBOL = 'ETHUSDT'
-    LIMIT = 100
+    LIMIT = '100'
     TIMEFRAME = '1m'
 
     # create class object with the data we need
