@@ -9,22 +9,26 @@ from finta import TA
 
 class Indicators:
 
-    # find local minimum / local maximum
-    def isLCC(self, df, i):
+    # find local minimum
+    @staticmethod
+    def isLCC(df, i):
         LCC = 0
         if df['close'][i] <= df['close'][i + 1] and df['close'][i] <= df['close'][i - 1] < df['close'][i + 1]:
             # local low
             LCC = i - 1
         return LCC
 
-    def isHCC(self, df, i):
+    # find local maximum
+    @staticmethod
+    def isHCC(df, i):
         HCC = 0
         if df['close'][i] >= df['close'][i + 1] and df['close'][i] >= df['close'][i - 1] > df['close'][i + 1]:
             # local max
             HCC = i
         return HCC
 
-    def getMaxMinChannel(self, df, n):
+    @staticmethod
+    def getMaxMinChannel(df, n):
         maxx = 0
         minn = df['low'].max()
         for i in range(1, n):
@@ -35,7 +39,8 @@ class Indicators:
         return maxx, minn
 
     # True Range and Average True Range indicator
-    def indATR(self, source_df, n):
+    @staticmethod
+    def indATR(source_df, n):
         df = source_df.copy()
         df['H-L'] = abs(df['high'] - df['low'])
         df['H-PC'] = abs(df['high'] - df['close'].shift(1))
@@ -48,7 +53,8 @@ class Indicators:
     # To find a slope of price line
     # series - dataframe 'close' indSlope(df['close'],5)
     # n - num of kandels, 5 by default
-    def indSlope(self, series, n):
+    @staticmethod
+    def indSlope(series, n):
         array_sl = [j * 0 for j in range(n - 1)]
         for j in range(n, len(series) + 1):
             y = series[j - n:j]

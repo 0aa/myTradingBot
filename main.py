@@ -10,53 +10,6 @@ from strategies.channel_slope import channel_slope
 from helpers.helpers import close_if_below, close_if_above
 
 
-# check if we need to close existing position at the current price
-# df - dataFrame with existing positions
-def check_if_close(temp_df, price):
-    open_poses = temp_df.index[temp_df['status'] == 'open'].tolist()
-    # pass grid type
-    for i in open_poses:
-        pos_type = temp_df.loc[i]['pos_type']
-        match pos_type:
-            case 'long':
-                close_if_below('stop_grid', price, i)
-                close_if_above('profit_grid', price, i)
-            case 'short':
-                close_if_below('profit_grid', price, i)
-                close_if_above('stop_grid', price, i)
-
-
-
-
-
-
-
-
-# process the (stream) data
-# determine if we need to close or open a position
-def process_data(obj):
-    old_df = copy.copy(obj.dataframe)
-    while True:
-
-        if old_df.equals(obj.dataframe):
-            '''compare the copy of the initial dataframe
-            with the original to check if it got any updates '''
-            time.sleep(10)
-        else:
-            ''' the updated dataframe is "old" now'''
-            old_df = copy.copy(obj.dataframe)
-            # all the indicators suppose to return signal and current or future price
-
-            signal, price = channel_slope(old_df)
-            check_if_close(obj.deals_array, price)
-            if signal:
-                print(signal, price)
-                # open_pos(signal, price)
-                print('deals: ', obj.deals_array.head())
-
-            time.sleep(10)
-
-
 class DataStream:
 
     def __init__(self, symbol, timeframe, limit):
@@ -120,8 +73,49 @@ class DataStream:
         self.receive_stream_data()
 
 
-if __name__ == "__main__":
+# check if we need to close existing position at the current price
+# df - dataFrame with existing positions
+def check_if_close(temp_df, price):
+    open_poses = temp_df.index[temp_df['status'] == 'open'].tolist()
+    # pass grid type
+    for i in open_poses:
+        pos_type = temp_df.loc[i]['pos_type']
+        match pos_type:
+            case 'long':
+                close_if_below('stop_grid', price, i)
+                close_if_above('profit_grid', price, i)
+            case 'short':
+                close_if_below('profit_grid', price, i)
+                close_if_above('stop_grid', price, i)
 
+
+# process the (stream) data
+# determine if we need to close or open a position
+def process_data(obj):
+    old_df = copy.copy(obj.dataframe)
+    while True:
+
+        if old_df.equals(obj.dataframe):
+            '''compare the copy of the initial dataframe
+            with the original to check if it got any updates '''
+            time.sleep(10)
+        else:
+            ''' the updated dataframe is "old" now'''
+            old_df = copy.copy(obj.dataframe)
+            # all the indicators suppose to return signal and current or future price
+
+            signal, price = channel_slope(old_df)
+            check_if_close(obj.deals_array, price)
+
+            if signal:
+                print(signal, price)
+                # open_pos(signal, price)
+                print('deals: ', obj.deals_array.head())
+
+            time.sleep(10)
+
+
+if __name__ == "__main__":
     '''[X, Y], where X is percent of price to calculate stop/profit
     and Y is percent of lot to close position i.e. [2,10] - 2% of price and 20% of lot left(!)
     last Y always should be 100 - since we want to close 100% of the lot '''
