@@ -113,19 +113,22 @@ def process_data(obj):
             time.sleep(10)
 
 
+def test_strategy():
+    pass
+
+
 if __name__ == "__main__":
     '''[X, Y], where X is percent of price to calculate stop/profit
     and Y is percent of lot to close position i.e. [2,10] - 2% of price and 20% of lot left(!)
     last Y always should be 100 - since we want to close 100% of the lot '''
     profit_stop = {'take_profit': [[2, 20], [3, 20], [4, 20], [5, 20], [6, 100]],
                    'stop_loss': [[1, 50], [2, 100], ]}  # <====try to optimize
-
     # api_key = ""
     # secret_key = ""
     # api_url = 'https://api.binance.us'
     SYMBOL = 'ETHUSDT'
-    LIMIT = '100'
-    TIMEFRAME = '1m'
+    LIMIT = '1000'
+    TIMEFRAME = '5m'
 
     # create class object with the data we need
     eth = DataStream(SYMBOL, TIMEFRAME, LIMIT)
