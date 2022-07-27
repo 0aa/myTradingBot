@@ -5,8 +5,10 @@ import pandas as pd
 import requests
 import websocket
 import threading
+from multiprocessing import Value, Process
 
-from strategies.channel_slope import channel_slope
+
+from strategies.channel_slope import ChannelSlope
 from helpers.helpers import close_if_below, close_if_above
 
 
@@ -18,9 +20,8 @@ class DataStream:
         self.limit = str(limit)
         self.dataframe = self.get_initial_klines()
         self.profit_stop = {}
-        self.deals_array = pd.DataFrame(columns=
-                                        ['pos_id', 'pos_type', 'open_price', 'volume',
-                                         'volume_left', 'profit_grid', 'stop_grid', 'status', 'profit'])
+        self.deals_array = pd.DataFrame(columns=['pos_id', 'pos_type', 'open_price', 'volume',
+                                                 'volume_left', 'profit_grid', 'stop_grid', 'status', 'profit'])
 
     def get_initial_klines(self):
         x = requests.get(
@@ -57,7 +58,7 @@ class DataStream:
                                 axis=0,
                                 inplace=True)
             self.dataframe = pd.concat([self.dataframe, temp_df], sort=False, ignore_index=True)
-            self.dataframe.reset_index(drop=True)
+            self.dataframe.reset_index(drop=True)\
 
     @staticmethod
     def on_close(ws):
@@ -94,6 +95,7 @@ def check_if_close(temp_df, price):
 def process_data(obj):
     old_df = copy.copy(obj.dataframe)
     while True:
+        print("process data", obj.dataframe)
         if old_df.equals(obj.dataframe):
             '''compare the copy of the initial dataframe
             with the original to check if it got any updates '''
@@ -102,7 +104,7 @@ def process_data(obj):
             ''' the updated dataframe is "old" now'''
             old_df = copy.copy(obj.dataframe)
             # all the indicators suppose to return signal and current or future price
-            signal, price = channel_slope(old_df)
+            signal, price = ChannelSlope.channel_slope(old_df)
             check_if_close(obj.deals_array, price)
 
             if signal:
@@ -127,7 +129,7 @@ if __name__ == "__main__":
     # secret_key = ""
     # api_url = 'https://api.binance.us'
     SYMBOL = 'ETHUSDT'
-    LIMIT = '1000'
+    LIMIT = '100'
     TIMEFRAME = '5m'
 
     # create class object with the data we need
