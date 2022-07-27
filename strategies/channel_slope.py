@@ -7,16 +7,22 @@ class ChannelSlope:
 
     def __init__(self, dataframe):
         self.dataframe = dataframe
+        self.short_slope = 50
+        self.long_slope = -50
+        self.short_pos_in_channel = 0.5
+        self.long_pos_in_channel = -0.5
 
+    def set_random_vals(self):
         # optimization
         # random slope
-        self.random_slope = np.random.uniform(10, 90)
-        self.short_slope = 100 - np.random.default_rng().noncentral_chisquare(3, self.random_slope)
-        self.long_slope = 0 - np.random.default_rng().noncentral_chisquare(3, self.random_slope)
+        random_slope = np.random.uniform(10, 90)
+        self.short_slope = 100 - np.random.default_rng().noncentral_chisquare(3, random_slope)
+        self.long_slope = 0 - np.random.default_rng().noncentral_chisquare(3, random_slope)
         # random pos in channel
-        self.random_pos_in_channel = np.random.uniform(0, 50)
-        self.short_pos_in_channel = (100 - np.random.default_rng().noncentral_chisquare(3, self.random_pos_in_channel)) * 0.01
-        self.long_pos_in_channel = np.random.default_rng().noncentral_chisquare(3, self.random_pos_in_channel) * 0.01
+        random_pos_in_channel = np.random.uniform(0, 50)
+        self.short_pos_in_channel = (100 - np.random.default_rng().noncentral_chisquare(3,
+                                                                                        random_pos_in_channel)) * 0.01
+        self.long_pos_in_channel = np.random.default_rng().noncentral_chisquare(3, random_pos_in_channel) * 0.01
 
     def channel_slope(self):
         prepared_df = Ind.PrepareDF(self.dataframe)
