@@ -7,7 +7,6 @@ import websocket
 import threading
 from multiprocessing import Value, Process
 
-
 from strategies.channel_slope import ChannelSlope
 from helpers.helpers import close_if_below, close_if_above
 
@@ -58,7 +57,7 @@ class DataStream:
                                 axis=0,
                                 inplace=True)
             self.dataframe = pd.concat([self.dataframe, temp_df], sort=False, ignore_index=True)
-            self.dataframe.reset_index(drop=True)\
+            self.dataframe.reset_index(drop=True)
 
     @staticmethod
     def on_close(ws):
@@ -95,7 +94,6 @@ def check_if_close(temp_df, price):
 def process_data(obj):
     old_df = copy.copy(obj.dataframe)
     while True:
-        print("process data", obj.dataframe)
         if old_df.equals(obj.dataframe):
             '''compare the copy of the initial dataframe
             with the original to check if it got any updates '''
@@ -130,7 +128,7 @@ if __name__ == "__main__":
     # api_url = 'https://api.binance.us'
     SYMBOL = 'ETHUSDT'
     LIMIT = '100'
-    TIMEFRAME = '5m'
+    TIMEFRAME = '1m'
 
     # create class object with the data we need
     eth = DataStream(SYMBOL, TIMEFRAME, LIMIT)
