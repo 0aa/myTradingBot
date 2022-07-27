@@ -3,12 +3,13 @@ import numpy as np
 
 
 class ChannelSlope:
-
+    """default strategy values"""
     short_slope = 5
     long_slope = 5
     short_pos_in_channel = 0.5
     long_pos_in_channel = 0.5
 
+    """update strategy values with random values"""
     @classmethod
     def set_random_vals(cls):
         # optimization with Monte-Carlo method
@@ -22,6 +23,7 @@ class ChannelSlope:
                                                                                        random_pos_in_channel)) * 0.01
         cls.long_pos_in_channel = np.random.default_rng().noncentral_chisquare(3, random_pos_in_channel) * 0.01
 
+    """run strategy with default or updated values"""
     @classmethod
     def channel_slope(cls, dataframe):
         prepared_df = Ind.PrepareDF(dataframe)
