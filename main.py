@@ -114,6 +114,23 @@ def process_data(obj):
 
 
 def test_strategy():
+    test = ChannelSlope()
+
+    # start loop
+
+    # set random values
+    test.set_random_vals()
+    # run strategy
+    test.channel_slope()
+    # save results
+
+    # exit from the loop
+
+    # save results
+
+    # optimize results
+
+
     pass
 
 
