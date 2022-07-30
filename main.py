@@ -114,14 +114,15 @@ def process_data(obj):
 
 
 def test_strategy():
-    test = ChannelSlope()
+    df = {}  # dummy dataframe
+    test = ChannelSlope(df)  # <== pass dataframe
 
     # start loop
 
     # set random values
     test.set_random_vals()
     # run strategy
-    test.channel_slope()
+    test.run()
     # save results
 
     # exit from the loop
@@ -130,8 +131,6 @@ def test_strategy():
 
     # optimize results
 
-
-    pass
 
 
 if __name__ == "__main__":

@@ -4,7 +4,10 @@ import numpy as np
 
 class ChannelSlope:
 
-    def __init__(self):
+    def __init__(self, dataframe):
+
+        self.dataframe = None
+
         """default strategy values"""
         self.long_slope = None
         self.short_slope = None
@@ -46,9 +49,11 @@ class ChannelSlope:
         self.maxmin_period = int(np.random.default_rng().normal(10, 2))
         self.slope_period = int(np.random.default_rng().normal(5, 2))
 
+
+
     """run strategy with default or updated values"""
-    def channel_slope(self, dataframe):
-        prepared_df = Ind.PrepareDF(dataframe, self.atr_period, self.maxmin_period, self.slope_period)
+    def run(self):
+        prepared_df = Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period, self.slope_period)
         signal = None  # return value
         i = len(prepared_df) - 1  # 99  is current kandel which is not closed, 98 is last closed kandel, we need 97 to
         # check if it is bottom or top
