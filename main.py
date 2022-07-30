@@ -113,9 +113,9 @@ def process_data(obj):
             time.sleep(10)
 
 
-def test_strategy():
-    df = {}  # dummy dataframe
-    test = ChannelSlope(df)  # <== pass dataframe
+def test_strategy(obj):
+    dataframe = obj.dataframe
+    test = ChannelSlope()
 
     # start loop
 
@@ -132,7 +132,6 @@ def test_strategy():
     # optimize results
 
 
-
 if __name__ == "__main__":
     '''[X, Y], where X is percent of price to calculate stop/profit
     and Y is percent of lot to close position i.e. [2,10] - 2% of price and 20% of lot left(!)
@@ -143,8 +142,8 @@ if __name__ == "__main__":
     # secret_key = ""
     # api_url = 'https://api.binance.us'
     SYMBOL = 'ETHUSDT'
-    LIMIT = '100'
-    TIMEFRAME = '1m'
+    LIMIT = '1000'
+    TIMEFRAME = '5m'
 
     # create class object with the data we need
     eth = DataStream(SYMBOL, TIMEFRAME, LIMIT)
@@ -152,9 +151,13 @@ if __name__ == "__main__":
 
     t = threading.Thread(name='receive_stream_data', target=eth.start)
     w = threading.Thread(name='process_data', target=process_data, args=(eth,))
+    backtest = threading.Thread(name='test strategy', target=test_strategy, args=(eth,))
 
-    w.start()
-    t.start()
+    #t.start()
+    #w.start()
+    backtest.start()
 
-    w.join()
-    t.join()
+    #w.join()
+    #t.join()
+    backtest.join()
+
