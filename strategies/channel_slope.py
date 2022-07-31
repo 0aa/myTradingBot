@@ -49,8 +49,6 @@ class ChannelSlope:
         self.maxmin_period = int(np.random.default_rng().normal(10, 2))
         self.slope_period = int(np.random.default_rng().normal(5, 2))
 
-
-
     """run strategy with default or updated values"""
     def run(self):
         prepared_df = Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period, self.slope_period)

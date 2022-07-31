@@ -115,7 +115,10 @@ def process_data(obj):
 
 def test_strategy(obj):
     dataframe = obj.dataframe
-    test = ChannelSlope()
+    test = ChannelSlope(dataframe)
+
+
+
 
     # start loop
 
