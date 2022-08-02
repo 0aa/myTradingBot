@@ -1,4 +1,13 @@
 from multiprocessing import Pool
+import time
+
+'''
+obj - strategy class with df "Strategy(dataframe)" that has the following:
+    set_random_vals() - set-up random values for Monte-Carlo
+    run() - tu run thru dataframe with random values
+num_runs - number of iterations
+'''
+
 
 class Backtest:
 
@@ -6,17 +15,18 @@ class Backtest:
         self.obj = obj
         self.num_runs = 1000
 
-    def run_backtest(self):
+    def run_pool(self):
+        pool = Pool()
+        pool.map(self.run_backtest, range(self.num_runs))
+        pool.close()
+        pool.join()
+        pass
 
-
-
-
-    def run_loop(self):
+    def run_backtest(self, n):
         # create empty dataframe with results
-        for i in range(self.num_runs):
-            self.obj.set_default_vals()
-            self.obj.run()
-            run_params = vars(self.obj)
+        self.obj.set_random_vals()
+        signal, price = self.obj.run()
+        run_params = vars(self.obj)
 
     def drawdown(self):
         pass
