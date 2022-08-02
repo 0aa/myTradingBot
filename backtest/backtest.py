@@ -1,4 +1,4 @@
-
+from multiprocessing import Pool
 
 class Backtest:
 
@@ -6,19 +6,17 @@ class Backtest:
         self.obj = obj
         self.num_runs = 1000
 
-    @classmethod
-    def runt_backtest(cls):
+    def run_backtest(self):
 
+
+
+
+    def run_loop(self):
         # create empty dataframe with results
-
-        for i in range(cls.num_runs):
-            cls.obj.set_default_vals()
-            cls.obj.run()
-            run_params = vars(cls.obj)
-
-
-
-
+        for i in range(self.num_runs):
+            self.obj.set_default_vals()
+            self.obj.run()
+            run_params = vars(self.obj)
 
     def drawdown(self):
         pass

@@ -9,6 +9,7 @@ from multiprocessing import Value, Process
 
 from strategies.channel_slope import ChannelSlope
 from helpers.helpers import close_if_below, close_if_above
+from backtest.backtest import Backtest
 
 
 class DataStream:
@@ -115,10 +116,10 @@ def process_data(obj):
 
 def test_strategy(obj):
     dataframe = obj.dataframe
+
     test = ChannelSlope(dataframe)
 
-
-
+    test_results = Backtest(test)
 
     # start loop
 
