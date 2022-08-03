@@ -1,12 +1,13 @@
 from indicators.indicators import Indicators as Ind
 import numpy as np
+import copy
 
 
 class ChannelSlope:
 
     def __init__(self, dataframe):
 
-        self.dataframe = None
+        self.dataframe = dataframe
 
         """default strategy values"""
         self.long_slope = None

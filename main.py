@@ -116,23 +116,14 @@ def process_data(obj):
 
 def test_strategy(obj):
     dataframe = obj.dataframe
-
-    test = ChannelSlope(dataframe)
-
-    test_results = Backtest(test)
-
+    apply_str = ChannelSlope(dataframe)
+    apply_bt = Backtest(apply_str)
+    apply_bt.num_runs = 1000
+    apply_bt.run_pool()
     # start loop
 
-    # set random values
-    test.set_random_vals()
-    # run strategy
-    test.run()
-    # save results
-
     # exit from the loop
-
     # save results
-
     # optimize results
 
 
@@ -153,15 +144,14 @@ if __name__ == "__main__":
     eth = DataStream(SYMBOL, TIMEFRAME, LIMIT)
     eth.profit_stop = profit_stop
 
-    t = threading.Thread(name='receive_stream_data', target=eth.start)
-    w = threading.Thread(name='process_data', target=process_data, args=(eth,))
+    #t = threading.Thread(name='receive_stream_data', target=eth.start)
+    #w = threading.Thread(name='process data', target=process_data, args=(eth,))
     backtest = threading.Thread(name='test strategy', target=test_strategy, args=(eth,))
 
-    #t.start()
-    #w.start()
+    # t.start()
+    # w.start()
     backtest.start()
 
-    #w.join()
-    #t.join()
+    # w.join()
+    # t.join()
     backtest.join()
-

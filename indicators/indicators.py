@@ -5,6 +5,7 @@ indicators that are not available in any lib will be stored there
 import statsmodels.api as sm
 import numpy as np
 from finta import TA
+np.seterr(divide='ignore', invalid='ignore')
 
 
 class Indicators:
@@ -57,10 +58,10 @@ class Indicators:
     def indSlope(series, n):
         array_sl = [j * 0 for j in range(n - 1)]
         for j in range(n, len(series) + 1):
-            y = series[j - n:j]
+            y = series[j - n:j].to_numpy()
             x = np.array(range(n))
-            x_sc = (x - x.min()) / (x.max() - x.min())
-            y_sc = (y - y.min()) / (y.max() - y.min())
+            x_sc = (x - np.amin(x)) / (np.amax(x) - np.amin(x))
+            y_sc = (y - np.amin(y)) / (np.amax(y) - np.amin(y))
             x_sc = sm.add_constant(x_sc)
             model = sm.OLS(y_sc, x_sc)
             results = model.fit()
