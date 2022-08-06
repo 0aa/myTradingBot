@@ -1,7 +1,7 @@
 """
 indicators that are not available in any lib will be stored there
 """
-
+import pandas as pd
 import statsmodels.api as sm
 import numpy as np
 from finta import TA
@@ -10,52 +10,18 @@ np.seterr(divide='ignore', invalid='ignore')
 
 class Indicators:
 
-    # find local minimum
     @staticmethod
-    def isLCC(df, i):
-        LCC = 0
-        if df['close'][i] <= df['close'][i + 1] and df['close'][i] <= df['close'][i - 1] < df['close'][i + 1]:
-            # local low
-            LCC = i - 1
-        return LCC
+    def local_min_max(df):
+        df['loc_min'] = df.close[(df.close.shift(1) > df.close) & (df.close.shift(-1) > df.close)]
+        df['loc_max'] = df.close[(df.close.shift(1) < df.close) & (df.close.shift(-1) < df.close)]
+        return df
 
-    # find local maximum
-    @staticmethod
-    def isHCC(df, i):
-        HCC = 0
-        if df['close'][i] >= df['close'][i + 1] and df['close'][i] >= df['close'][i - 1] > df['close'][i + 1]:
-            # local max
-            HCC = i
-        return HCC
-
-    @staticmethod
-    def getMaxMinChannel(df, n):
-        maxx = 0
-        minn = df['low'].max()
-        for i in range(1, n):
-            if maxx < df['high'][len(df) - i]:
-                maxx = df['high'][len(df) - i]
-            if minn > df['low'][len(df) - i]:
-                minn = df['low'][len(df) - i]
-        return maxx, minn
-
-    # True Range and Average True Range indicator
-    @staticmethod
-    def indATR(source_df, n):
-        df = source_df.copy()
-        df['H-L'] = abs(df['high'] - df['low'])
-        df['H-PC'] = abs(df['high'] - df['close'].shift(1))
-        df['L-PC'] = abs(df['low'] - df['close'].shift(1))
-        df['TR'] = df[['H-L', 'H-PC', 'L-PC']].max(axis=1, skipna=False)
-        df['ATR'] = df['TR'].rolling(n).mean()
-        df_temp = df.drop(['H-L', 'H-PC', 'L-PC'], axis=1)
-        return df_temp
 
     # To find a slope of price line
     # series - dataframe 'close' indSlope(df['close'],5)
     # n - num of kandels, 5 by default
     @staticmethod
-    def indSlope(series, n):
+    def indSlope(series: pd.Series, n):
         array_sl = [j * 0 for j in range(n - 1)]
         for j in range(n, len(series) + 1):
             y = series[j - n:j].to_numpy()
@@ -76,15 +42,12 @@ class Indicators:
     # position_in_channel
     # DF - dataframe
     @classmethod
-    def PrepareDF(cls, df, atr_period=14, maxmin_period=10,slope_period=5):   # <====try to optimize
-        ohlc = df.iloc[:, [0, 1, 2, 3, 4]]
-        ohlc.columns = ["timestamp", "open", "high", "low", "close"]
-        ohlc = ohlc.set_index('timestamp')
-        df = cls.indATR(ohlc, atr_period).reset_index()  # <====try to optimize
+    def PrepareDF(cls, df, atr_period: int = 14, maxmin_period: int = 10, slope_period: int = 5):  # <====try to optimize
+        df = cls.local_min_max(df)
+        df['ATR'] = TA.ATR(df, atr_period)  # <====try to optimize
         df['slope'] = cls.indSlope(df['close'], slope_period)  # <====try to optimize
-        df['channel_max'] = df['high'].rolling(maxmin_period).max()  # <====try to optimize
-        df['channel_min'] = df['low'].rolling(maxmin_period).min()  # <====try to optimize
-        df['position_in_channel'] = (df['close'] - df['channel_min']) / (df['channel_max'] - df['channel_min'])
-        df = df.set_index('timestamp')
+        df['ch_max'] = df['high'].rolling(maxmin_period).max()  # <====try to optimize
+        df['ch_min'] = df['low'].rolling(maxmin_period).min()  # <====try to optimize
+        df['pos_in_ch'] = (df['close'] - df['ch_min']) / (df['ch_max'] - df['ch_min'])
         df = df.reset_index()
         return df

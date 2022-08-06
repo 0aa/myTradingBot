@@ -33,6 +33,7 @@ class ChannelSlope:
         self.slope_period = 5
 
     """update strategy and indicators values with random values"""
+
     def set_random_vals(self):
         # optimization with Monte-Carlo method
         # random slope
@@ -42,7 +43,7 @@ class ChannelSlope:
         # random pos in channel
         random_pos_in_channel = np.random.uniform(0, 50)
         self.short_pos_in_channel = (100 - np.random.default_rng().noncentral_chisquare(3,
-                                                                                       random_pos_in_channel)) * 0.01
+                                                                                        random_pos_in_channel)) * 0.01
         self.long_pos_in_channel = np.random.default_rng().noncentral_chisquare(3, random_pos_in_channel) * 0.01
 
         # indicators optimization
@@ -50,9 +51,30 @@ class ChannelSlope:
         self.maxmin_period = int(np.random.default_rng().normal(10, 2))
         self.slope_period = int(np.random.default_rng().normal(5, 2))
 
-    """run strategy with default or updated values"""
-    def run(self):
+    # wip
+    def test_trade_pos(self):
         prepared_df = Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period, self.slope_period)
+
+        print(prepared_df.to_string())
+
+        if prepared_df.loc_min and prepared_df.pos_in_ch < self.long_pos_in_channel and prepared_df.slope < - self.long_slope:
+            prepared_df['signal'] = 'Short'
+        elif prepared_df.loc_max and prepared_df.pos_in_ch > self.short_pos_in_channel and prepared_df.slope > self.short_slope:
+            prepared_df['signal'] = 'Long'
+        else:
+            prepared_df['signal'] = None
+        print(prepared_df.to_string())
+
+    """run strategy with default or updated values"""
+
+    def run(self):
+        # wip
+        self.test_trade_pos()
+
+        prepared_df = Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period, self.slope_period)
+
+        #print(prepared_df.to_string())
+        """
         signal = None  # return value
         i = len(prepared_df) - 1  # 99  is current kandel which is not closed, 98 is last closed kandel, we need 97 to
         # check if it is bottom or top
@@ -70,4 +92,16 @@ class ChannelSlope:
                 if prepared_df['slope'][i - 1] > self.short_slope:
                     # found a good enter point for SHORT
                     signal = 'short'
+        """
+        if prepared_df['loc_min'][i] and prepared_df['pos_in_ch'][i] < self.long_pos_in_channel and \
+                prepared_df['slope'][i] < - self.long_slope:
+            signal = 'long'
+        # found top - OPEN SHORT : local maximum, close to top of channel
+        elif prepared_df['loc_max'][i] and prepared_df['pos_in_ch'][i] > self.short_pos_in_channel and \
+                prepared_df['slope'][i] > self.short_slope:
+            signal = 'short'
+        else:
+            pass
+        print(signal)
+
         return signal, prepared_df.at[i, 'close']

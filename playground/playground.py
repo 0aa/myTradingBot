@@ -2,42 +2,36 @@ from multiprocessing import Pool
 import time
 from finta.finta import TA
 
-def run_loop(p):
-    x=99999
-    print(x)
-    return x**x
 
+class Tes:
+    def __init__(self):
+        self.a = None
+        self.b = None
+class Tes2:
+    def __init__(self):
+        self.a = None
+        self.b = None
+        self.c = None
 
-if __name__ == '__main__':
-    rng = 50
+cls = Tes()
+cls2 = Tes2()
+cls.a = 1
+cls.b = 3
+vr = vars(cls)
+print(vr)
+# v = {'a': 1, 'b': 3}
 
+for i in vr:
+    print('i',i, vr[i])
 
-    t = time.time()
-    for i in range(rng):
-        run_loop(i)
-    print('time ran loop', time.time() - t)
-
-    '''
-    t = time.time()
-    for x in rng:
-        x ** x
-    print('time ran loop#2', time.time() - t)
-    '''
-
-    t = time.time()
-    pool = Pool()  # on 8 processors
-    pool.imap_unordered(run_loop, range(rng))
-    pool.close()
-    pool.join()
-    print('time ran pool', time.time() - t)
-
+print(vars(cls2))
 
     # start 4 worker processes
     # with Pool(processes=4) as pool:
 
 
 
-
+"""
     '''
         # print "[0, 1, 4,..., 81]"
         print(pool.map(f, range(10)))
@@ -56,10 +50,10 @@ if __name__ == '__main__':
 
     # exiting the 'with'-block has stopped the pool
     '''
+"""
 
-
-
-    """#initial test with Monte-Carlo method 
+"""
+    #initial test with Monte-Carlo method 
 
 def run_test(prepared_df):
     lend=len(prepared_df)
@@ -212,4 +206,4 @@ for i in range(10):
     temp_result, temp_df, take_profit_array = run_test(prepared_df)
     results_array = pd.concat([results_array, temp_result], sort=False, ignore_index=True)
     print("Iteration",i+1,time.perf_counter()-t)
-    """
+"""
