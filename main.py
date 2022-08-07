@@ -118,7 +118,7 @@ def test_strategy(obj):
     dataframe = obj.dataframe
     apply_str = ChannelSlope(dataframe)
     apply_bt = Backtest(apply_str)
-    apply_bt.num_runs = 1
+    apply_bt.num_runs = 10
     apply_bt.run_pool()
     # start loop
 
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     # create class object with the data we need
     eth = DataStream(SYMBOL, TIMEFRAME, LIMIT)
     eth.profit_stop = profit_stop
-    print(eth.dataframe.head())
+
     #t = threading.Thread(name='receive_stream_data', target=eth.start)
     #w = threading.Thread(name='process data', target=process_data, args=(eth,))
     backtest = threading.Thread(name='test strategy', target=test_strategy, args=(eth,))

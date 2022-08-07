@@ -29,9 +29,8 @@ class Backtest:
 
     def run_backtest(self, n):
         try:
-            # create empty dataframe with results
-            self.obj.set_random_vals()
-            signal, price = self.obj.run()
+            # self.obj.set_random_vals()
+            self.obj.run_test()
             run_params = vars(self.obj)
             run_params.pop('dataframe')
             print(run_params)

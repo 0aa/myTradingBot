@@ -52,56 +52,28 @@ class ChannelSlope:
         self.slope_period = int(np.random.default_rng().normal(5, 2))
 
     # wip
-    def test_trade_pos(self):
+    def run_test(self):
         prepared_df = Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period, self.slope_period)
 
-        print(prepared_df.to_string())
-
-        if prepared_df.loc_min and prepared_df.pos_in_ch < self.long_pos_in_channel and prepared_df.slope < - self.long_slope:
-            prepared_df['signal'] = 'Short'
-        elif prepared_df.loc_max and prepared_df.pos_in_ch > self.short_pos_in_channel and prepared_df.slope > self.short_slope:
-            prepared_df['signal'] = 'Long'
-        else:
-            prepared_df['signal'] = None
-        print(prepared_df.to_string())
+        prepared_df.loc[(prepared_df['slope'] < - self.long_slope)
+                        & (prepared_df['loc_min'].notna())
+                        & (prepared_df['pos_in_ch'] < self.long_pos_in_channel), 'Trade'] = 'Long'
+        prepared_df.loc[(prepared_df['slope'] > self.short_slope)
+                        & (prepared_df['loc_max'].notna())
+                        & (prepared_df['pos_in_ch'] > self.short_pos_in_channel), 'Trade'] = 'Short'
+        # print(prepared_df.to_string())
+        return
 
     """run strategy with default or updated values"""
 
     def run(self):
-        # wip
-        self.test_trade_pos()
-
         prepared_df = Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period, self.slope_period)
-
-        #print(prepared_df.to_string())
-        """
-        signal = None  # return value
-        i = len(prepared_df) - 1  # 99  is current kandel which is not closed, 98 is last closed kandel, we need 97 to
-        # check if it is bottom or top
-        if Ind.isLCC(prepared_df, i - 1) > 0:
-            # found bottom - OPEN LONG
-            if prepared_df['position_in_channel'][i - 1] < self.long_pos_in_channel:
-                # close to top of channel
-                if prepared_df['slope'][i - 1] < - self.long_slope:
-                    # found a good enter point for LONG
-                    signal = 'long'
-        if Ind.isHCC(prepared_df, i - 1) > 0:
-            # found top - OPEN SHORT
-            if prepared_df['position_in_channel'][i - 1] > self.short_pos_in_channel:
-                # close to top of channel
-                if prepared_df['slope'][i - 1] > self.short_slope:
-                    # found a good enter point for SHORT
-                    signal = 'short'
-        """
-        if prepared_df['loc_min'][i] and prepared_df['pos_in_ch'][i] < self.long_pos_in_channel and \
-                prepared_df['slope'][i] < - self.long_slope:
+        # print(prepared_df.to_string())
+        signal = None
+        if (prepared_df['loc_min'][-1] > 0) and (prepared_df['pos_in_ch'][-1] < self.long_pos_in_channel) and (prepared_df['slope'][-1] < - self.long_slope):
+            # found a good enter point for LONG
             signal = 'long'
-        # found top - OPEN SHORT : local maximum, close to top of channel
-        elif prepared_df['loc_max'][i] and prepared_df['pos_in_ch'][i] > self.short_pos_in_channel and \
-                prepared_df['slope'][i] > self.short_slope:
+        if (prepared_df['loc_max'][-1] > 0) and (prepared_df['pos_in_ch'][-1] > self.short_pos_in_channel) and (prepared_df['slope'][-1] > self.short_slope):
+            # found a good enter point for SHORT
             signal = 'short'
-        else:
-            pass
-        print(signal)
-
-        return signal, prepared_df.at[i, 'close']
+        return signal, prepared_df.at[-1, 'close']

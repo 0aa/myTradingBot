@@ -207,3 +207,4 @@ for i in range(10):
     results_array = pd.concat([results_array, temp_result], sort=False, ignore_index=True)
     print("Iteration",i+1,time.perf_counter()-t)
 """
+
