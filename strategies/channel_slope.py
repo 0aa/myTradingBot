@@ -33,7 +33,6 @@ class ChannelSlope:
         self.slope_period = 5
 
     """update strategy and indicators values with random values"""
-
     def set_random_vals(self):
         # optimization with Monte-Carlo method
         # random slope
@@ -51,20 +50,36 @@ class ChannelSlope:
         self.maxmin_period = int(np.random.default_rng().normal(10, 2))
         self.slope_period = int(np.random.default_rng().normal(5, 2))
 
-    # wip
+    #wip
     def run_test(self):
         prepared_df = Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period, self.slope_period)
 
         prepared_df.loc[(prepared_df['slope'] < - self.long_slope)
                         & (prepared_df['loc_min'].notna())
+                        & (prepared_df['ATR'].notna())
                         & (prepared_df['pos_in_ch'] < self.long_pos_in_channel), 'Trade'] = 'Long'
         prepared_df.loc[(prepared_df['slope'] > self.short_slope)
                         & (prepared_df['loc_max'].notna())
+                        & (prepared_df['ATR'].notna())
                         & (prepared_df['pos_in_ch'] > self.short_pos_in_channel), 'Trade'] = 'Short'
-        # print(prepared_df.to_string())
-        return
 
+        prepared_df = self.position(prepared_df)
+
+        print(prepared_df.to_string())
+        return
     """run strategy with default or updated values"""
+
+    """
+    if "long" we buy -> "position" == price 
+    if "short" && position we sell -> current price - "position"
+    if  
+    """
+    def position(self, prepared_df):
+        #buy if signal is Long
+        prepared_df.loc[(prepared_df['Trade'] == "Long", "Pos")] = prepared_df['close']
+        prepared_df.loc[(prepared_df['Trade'] == "Long", "Pos")]
+
+        return prepared_df
 
     def run(self):
         prepared_df = Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period, self.slope_period)

@@ -7,7 +7,6 @@ import numpy as np
 from finta import TA
 np.seterr(divide='ignore', invalid='ignore')
 
-
 class Indicators:
 
     @staticmethod
@@ -16,10 +15,10 @@ class Indicators:
         df['loc_max'] = df.close[(df.close.shift(1) < df.close) & (df.close.shift(-1) < df.close)]
         return df
 
-
     # To find a slope of price line
     # series - dataframe 'close' indSlope(df['close'],5)
     # n - num of kandels, 5 by default
+
     @staticmethod
     def indSlope(series: pd.Series, n):
         array_sl = [j * 0 for j in range(n - 1)]
@@ -41,6 +40,7 @@ class Indicators:
     # channel_min
     # position_in_channel
     # DF - dataframe
+
     @classmethod
     def PrepareDF(cls, df, atr_period: int = 14, maxmin_period: int = 10, slope_period: int = 5):  # <====try to optimize
         df = cls.local_min_max(df)

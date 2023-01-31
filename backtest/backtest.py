@@ -4,10 +4,10 @@ import time
 from statsmodels.tools.sm_exceptions import MissingDataError
 
 '''
-obj - strategy class with df "Strategy(dataframe)" that has the following:
+    obj - strategy class with df = "Strategy(dataframe)" that has the following:
     set_random_vals() - set-up random values for Monte-Carlo
     run() - tu run thru dataframe with random values
-num_runs - number of iterations
+    num_runs - number of iterations
 '''
 
 
@@ -16,6 +16,16 @@ class Backtest:
     def __init__(self, obj):
         self.obj = obj
         self.num_runs = 100
+
+    def run_backtest(self, n):
+        try:
+            #self.obj.set_random_vals()
+            self.obj.run_test()
+            run_params = vars(self.obj)
+            run_params.pop('dataframe')
+            print(run_params)
+        except:
+            pass
 
     def run_pool(self):
         pool = Pool()
@@ -26,16 +36,6 @@ class Backtest:
         finally:
             pool.close()
             pool.join()
-
-    def run_backtest(self, n):
-        try:
-            # self.obj.set_random_vals()
-            self.obj.run_test()
-            run_params = vars(self.obj)
-            run_params.pop('dataframe')
-            print(run_params)
-        except:
-            pass
 
     def drawdown(self):
         pass
