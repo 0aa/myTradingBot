@@ -19,7 +19,7 @@ class ChannelSlope:
         self.maxmin_period = None
         self.slope_period = None
         """set all values to default"""
-        self.set_default_vals()
+        self.set_default_vals()  # set the values to default
 
     def set_default_vals(self):
         """default strategy values"""
@@ -31,6 +31,9 @@ class ChannelSlope:
         self.atr_period = 14
         self.maxmin_period = 10
         self.slope_period = 5
+
+    def prepare_df(self):
+        return Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period)
 
     """update strategy and indicators values with random values"""
     def set_random_vals(self):
@@ -52,9 +55,9 @@ class ChannelSlope:
 
     #wip
     def run_test(self):
-        prepared_df = Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period, self.slope_period)
+        prepared_df = self.prepare_df()
 
-        prepared_df.loc[(prepared_df['slope'] < - self.long_slope)
+        prepared_df.loc[((prepared_df['slope'] < - self.long_slope)
                         & (prepared_df['loc_min'].notna())
                         & (prepared_df['ATR'].notna())
                         & (prepared_df['pos_in_ch'] < self.long_pos_in_channel), 'Trade'] = 'Long'
@@ -82,7 +85,8 @@ class ChannelSlope:
         return prepared_df
 
     def run(self):
-        prepared_df = Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period, self.slope_period)
+        prepared_df = self.prepare_df()
+
         # print(prepared_df.to_string())
         signal = None
         if (prepared_df['loc_min'][-1] > 0) and (prepared_df['pos_in_ch'][-1] < self.long_pos_in_channel) and (prepared_df['slope'][-1] < - self.long_slope):

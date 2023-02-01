@@ -115,8 +115,8 @@ def process_data(obj):
 
 
 def test_strategy(obj):
-    dataframe = obj.dataframe
-    apply_str = ChannelSlope(dataframe)
+    dataframe = obj.dataframe  # pull dataframe from the object
+    apply_str = ChannelSlope(dataframe)  # pass the dataframe to the strategy class
     apply_bt = Backtest(apply_str)
     apply_bt.num_runs = 1
     apply_bt.run_pool()
@@ -137,15 +137,15 @@ if __name__ == "__main__":
     # secret_key = ""
     # api_url = 'https://api.binance.us'
     SYMBOL = 'ETHUSDT'
-    LIMIT = '1000'
+    LIMIT = '100'
     TIMEFRAME = '5m'
 
     # create class object with the data we need
     eth = DataStream(SYMBOL, TIMEFRAME, LIMIT)
     eth.profit_stop = profit_stop
 
-    #t = threading.Thread(name='receive_stream_data', target=eth.start)
-    #w = threading.Thread(name='process data', target=process_data, args=(eth,))
+    # t = threading.Thread(name='receive_stream_data', target=eth.start)
+    # w = threading.Thread(name='process data', target=process_data, args=(eth,))
     backtest = threading.Thread(name='test strategy', target=test_strategy, args=(eth,))
 
     # t.start()
