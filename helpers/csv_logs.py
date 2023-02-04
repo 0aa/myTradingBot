@@ -2,9 +2,15 @@
 store deals
 """
 
-import csv
 from src.utils import get_project_root
 
+
+"""
+create instance if the class with the following:
+    symbol: i.e ETH
+    timeframe: i.e 60
+    dataset limit: 100 - for different strategies   
+"""
 
 class Deals:
 
@@ -14,17 +20,18 @@ class Deals:
         self.timeframe = timeframe
         self.limit = str(limit)
         self.root = get_project_root()
-        self.file_path = self.root / f'storage/{self.symbol}_{self.timeframe}_{self.limit}.csv'
+        self.file_name = f'{self.symbol}_{self.timeframe}_{self.limit}.csv'
+        self.file_path = self.root / f'storage/{self.file_name}'
         self.file = self.create_deals()
 
     def create_deals(self):
         try:
             f = open(self.file_path, 'x')
             f.write('symbol,deal,price,count,amount\n')
-            return f.close()
-
+            print(f"File {self.file_name} was created")
+            return f
         except FileExistsError:
-            print("File Already Exists")
+            print(f"File {self.file_name} already exists")
 
     def read_deals(self):
         return open(self.file_path, 'r')
@@ -38,9 +45,8 @@ class Deals:
         f.write(string)
         f.close()
 
-
+'''
 deals = Deals("ETH", 60, 1000)
-
-str = 'eth,buy,1233,2'
 deals.write_deals("buy", 1000, 3)
-print("last:", deals.read_last())
+print("last:", (deals.read_last()))
+'''

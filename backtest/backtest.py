@@ -17,20 +17,30 @@ class Backtest:
         self.obj = obj
         self.num_runs = 100
 
-    def run_backtest(self, n):
+    '''
+    static backtest is for existing static dataframe only, for live data will use live backtest  
+    '''
+
+    def run_static_backtest(self, n):
         try:
-            #self.obj.set_random_vals()
+            """backtest itself"""
+            # self.obj.set_random_vals()
             self.obj.run_test()
+
+            """reporting"""
             run_params = vars(self.obj)
             run_params.pop('dataframe')
             print(run_params)
         except:
             pass
 
+    def run_live_backtest(self,):
+        pass
+
     def run_pool(self):
         pool = Pool()
         try:
-            pool.imap(self.run_backtest, range(self.num_runs))  # <== LOOP
+            pool.imap(self.run_static_backtest, range(self.num_runs))  # <== LOOP
         except ValueError:  # raised if `y` is empty.
             pass
         finally:
