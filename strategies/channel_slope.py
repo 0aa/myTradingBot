@@ -74,9 +74,11 @@ class ChannelSlope:
 
         """test with line by line and deals file"""
         for index, row in prepared_df.iterrows():
+
             if row['Trade'] == 'BUY__':
                 self.deals.write_deals('buy', -row['close'], 1)
-                #print('BUY', row['loc_min'])
+                print('row -1', row['close'][-1])
+            
             elif row['Trade'] == 'CLOSE':
                 self.deals.write_deals('close', +row['close'], 1)
                 #print('CLOSE', row['loc_max'])

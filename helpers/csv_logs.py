@@ -3,7 +3,7 @@ store deals
 """
 
 from src.utils import get_project_root
-
+from  pandas import *
 
 """
 create instance if the class with the following:
@@ -34,7 +34,7 @@ class Deals:
             print(f"File {self.file_name} already exists")
 
     def read_deals(self):
-        return open(self.file_path, 'r')
+        return read_csv(self.file_path, 'r')
 
     def read_last(self):
         return open(self.file_path, 'r').readlines()[-1]
@@ -45,8 +45,7 @@ class Deals:
         f.write(string)
         f.close()
 
-'''
+
 deals = Deals("ETH", 60, 1000)
-deals.write_deals("buy", 1000, 3)
-print("last:", (deals.read_last()))
-'''
+#deals.write_deals("buy", 1000, 3)
+print("last:", (deals.read_deals()))
