@@ -1,6 +1,6 @@
 from indicators.indicators import Indicators as Ind
 import numpy as np
-from helpers.csv_logs import Deals
+from helpers.csv_logs import Trades
 
 
 class ChannelSlope:
@@ -10,7 +10,7 @@ class ChannelSlope:
         self.dataframe = dataframe
 
         """create file where we're going to keep deals"""
-        self.deals = Deals("test", 100, '5m')
+        self.deals = Trades("test", 100, '5m')
 
         """default strategy values"""
         self.long_slope = None
@@ -72,9 +72,15 @@ class ChannelSlope:
                          & (prepared_df['ATR'].notna())
                          & (prepared_df['pos_in_ch'] > self.short_pos_in_channel)), 'Trade'] = 'CLOSE'
 
-        """test with line by line and deals file"""
-        for index, row in prepared_df.iterrows():
 
+
+
+
+
+
+        """test with line by line and deals file"""
+        """
+        for index, row in prepared_df.iterrows():
             if row['Trade'] == 'BUY__':
                 self.deals.write_deals('buy', -row['close'], 1)
                 print('row -1', row['close'][-1])
@@ -83,11 +89,12 @@ class ChannelSlope:
                 self.deals.write_deals('close', +row['close'], 1)
                 #print('CLOSE', row['loc_max'])
                 pass
-
+        """
         # prepared_df.loc[(prepared_df['Trade'] == 'BUY__', "Balance")] = - prepared_df['loc_min']
 
         # print(prepared_df.to_string())
         return prepared_df
+
 
     """run strategy with default or updated values"""
 

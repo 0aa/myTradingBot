@@ -10,7 +10,7 @@ from multiprocessing import Value, Process
 from strategies.channel_slope import ChannelSlope
 from helpers.helpers import close_if_below, close_if_above
 from backtest.backtest import Backtest
-from helpers.csv_logs import Deals
+from helpers.csv_logs import Trades
 
 
 class DataStream:
@@ -23,7 +23,7 @@ class DataStream:
         self.profit_stop = {}
         self.deals_array = pd.DataFrame(columns=['pos_id', 'pos_type', 'open_price', 'volume',
                                                  'volume_left', 'profit_grid', 'stop_grid', 'status', 'profit'])
-        self.deals = Deals(self.symbol, self.timeframe, self.limit)
+        self.deals = Trades(self.symbol, self.timeframe, self.limit)
 
     def get_initial_klines(self):
         x = requests.get(
