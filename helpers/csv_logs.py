@@ -55,6 +55,20 @@ class Trades:
             raise Exception(f"File not found: {self.file_path}")
         return positions
 
+    def sum_positions(self):
+        positions = self.read_positions()
+        summ = {'Symbol': self.symbol,
+                'Quantity': 0,
+                'Open_Price': 0,
+                'Total_Amount': 0,
+                'Status': 'Open'}
+        for pos in positions:
+            summ['Quantity'] = summ['Quantity'] + float(pos['Quantity'])
+            summ['Open_Price'] = summ['Open_Price'] + float(pos['Open_Price'])
+            summ['Total_Amount'] = summ['Total_Amount'] + float(pos['Total_Amount'])
+        summ['Open_Price'] = summ['Open_Price']/len(positions)
+        self.rewrite_pos(summ)
+
     def read_last(self):
         return open(self.file_path, 'r').readlines()[-1]
 
@@ -69,19 +83,19 @@ class Trades:
         writer = csv.DictWriter(f, fieldnames=self.fieldnames)
         writer.writerow(positions)
         f.close()
+        self.sum_positions()
 
-    def write_positions_to_csv(self, position):
-        csvfile = open(self.file_path, 'a+r')
-        pos = read_positions()
 
+    def rewrite_pos(self, position):
+        csvfile = open(self.file_path, 'w')
+        pos = self.read_positions()
         writer = csv.DictWriter(csvfile, fieldnames=self.fieldnames)
+        writer.writeheader()
         writer.writerow(position)
         csvfile.close()
 
 
 deals = Trades("ETH", 60, 1000)
-deals.write_pos(1000, 3.55)
-deals.write_pos(1000, 3.60)
+deals.write_pos(100, 4)
 
-
-print("last:", (deals.read_positions()))
+# print("last:", (deals.read_positions()))
