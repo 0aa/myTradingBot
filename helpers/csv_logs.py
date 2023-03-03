@@ -5,7 +5,6 @@ store deals
 from src.utils import get_project_root
 import csv
 
-from pandas import *
 
 """
 create instance if the class with the following:
@@ -18,7 +17,6 @@ create instance if the class with the following:
 class Trades:
 
     def __init__(self, symbol, timeframe, limit):
-
         self.symbol = symbol
         self.timeframe = timeframe
         self.limit = str(limit)
@@ -34,15 +32,10 @@ class Trades:
             writer = csv.DictWriter(csvfile, fieldnames=self.fieldnames)
             writer.writeheader()
             print(f"File {self.file_name} was created")
-
         except FileExistsError:
             print(f"File {self.file_name} already exists")
 
-    """return everything from the file"""
-
-    def all_positions(self):
-        return read_csv(self.file_path, 'r')
-
+    '''return positions from the file'''
     def read_positions(self):
         positions = []
         try:
@@ -55,6 +48,7 @@ class Trades:
             raise Exception(f"File not found: {self.file_path}")
         return positions
 
+    ''' summ all the positions from file and write as one line '''
     def sum_positions(self):
         positions = self.read_positions()
         summ = {'Symbol': self.symbol,
@@ -66,7 +60,7 @@ class Trades:
             summ['Quantity'] = summ['Quantity'] + float(pos['Quantity'])
             summ['Open_Price'] = summ['Open_Price'] + float(pos['Open_Price'])
             summ['Total_Amount'] = summ['Total_Amount'] + float(pos['Total_Amount'])
-        summ['Open_Price'] = summ['Open_Price']/len(positions)
+        summ['Open_Price'] = summ['Open_Price'] / len(positions)
         self.rewrite_pos(summ)
 
     def read_last(self):
@@ -85,7 +79,7 @@ class Trades:
         f.close()
         self.sum_positions()
 
-
+    ''' delete everything from the file and rewrite with the new data '''
     def rewrite_pos(self, position):
         csvfile = open(self.file_path, 'w')
         pos = self.read_positions()
@@ -95,7 +89,10 @@ class Trades:
         csvfile.close()
 
 
+
+'''
 deals = Trades("ETH", 60, 1000)
 deals.write_pos(100, 4)
+print("last:", (deals.read_positions()))
 
-# print("last:", (deals.read_positions()))
+'''
