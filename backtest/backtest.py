@@ -15,7 +15,8 @@ class Backtest:
 
     def __init__(self, obj):
         self.obj = obj
-        self.num_runs = 100
+        self.num_runs = 1
+        self.montecarlo = False
 
     '''
     static backtest is for existing static dataframe only, for live data will use live backtest  
@@ -24,17 +25,17 @@ class Backtest:
     def run_static_backtest(self, n):
         try:
             """backtest itself"""
-            # self.obj.set_random_vals()
+            if self.montecarlo: self.obj.set_random_vals()
             self.obj.run_test()
 
             """reporting"""
             run_params = vars(self.obj)
             run_params.pop('dataframe')
-            print(run_params)
+            #print(run_params)
         except:
             pass
 
-    def run_live_backtest(self,):
+    def run_live_backtest(self, ):
         pass
 
     def run_pool(self):

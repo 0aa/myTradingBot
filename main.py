@@ -23,7 +23,7 @@ class DataStream:
         self.profit_stop = {}
         self.deals_array = pd.DataFrame(columns=['pos_id', 'pos_type', 'open_price', 'volume',
                                                  'volume_left', 'profit_grid', 'stop_grid', 'status', 'profit'])
-        self.deals = Trades(self.symbol, self.timeframe, self.limit)
+        self.trades = Trades(self.symbol, self.timeframe, self.limit)
 
     def get_initial_klines(self):
         x = requests.get(
@@ -116,11 +116,14 @@ def process_data(obj):
             time.sleep(10)
 
 
+''' obj - is DataStream object (eth, shib, etc.)'''
 def test_strategy(obj):
-    dataframe = obj.dataframe  # pull dataframe from the object
-    apply_str = ChannelSlope(dataframe)  # pass the dataframe to the strategy class
-    apply_bt = Backtest(apply_str)
-    apply_bt.num_runs = 1
+    # dataframe = obj.dataframe  # pull dataframe from the object
+    apply_str = ChannelSlope(obj)  # pass the DataStream obj to the strategy class
+    apply_str.set_custom_vals()
+    apply_bt = Backtest(apply_str)  # pass strategy to backtest
+    apply_bt.montecarlo = True
+    apply_bt.num_runs = 1000
     apply_bt.run_pool()
     # start loop
 
@@ -145,6 +148,7 @@ if __name__ == "__main__":
     # create class object with the data we need
     eth = DataStream(SYMBOL, TIMEFRAME, LIMIT)
     eth.profit_stop = profit_stop
+
 
     # t = threading.Thread(name='receive_stream_data', target=eth.start)
     # w = threading.Thread(name='process data', target=process_data, args=(eth,))

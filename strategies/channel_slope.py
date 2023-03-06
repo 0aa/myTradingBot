@@ -5,12 +5,10 @@ from helpers.csv_logs import Trades
 
 class ChannelSlope:
 
-    def __init__(self, dataframe):
+    def __init__(self, obj):
 
-        self.dataframe = dataframe
-
-        """create file where we're going to keep deals"""
-        self.deals = Trades("test", 100, '5m')
+        self.dataframe = obj.dataframe
+        self.trades = obj.trades
 
         """default strategy values"""
         self.long_slope = None
@@ -33,6 +31,17 @@ class ChannelSlope:
         """default indicators values"""
         self.atr_period = 14
         self.maxmin_period = 10
+        self.slope_period = 5
+
+    def set_custom_vals(self):
+        """custom strategy values"""
+        self.short_slope = 12
+        self.long_slope = -88
+        self.short_pos_in_channel = 0.72
+        self.long_pos_in_channel = 0.62
+        """custom indicators values"""
+        self.atr_period = 13
+        self.maxmin_period = 7
         self.slope_period = 5
 
     def prepare_df(self):
@@ -72,37 +81,51 @@ class ChannelSlope:
                          & (prepared_df['ATR'].notna())
                          & (prepared_df['pos_in_ch'] > self.short_pos_in_channel)), 'Trade'] = 'CLOSE'
 
-
-
-
-
-
-
         """test with line by line and deals file"""
-        """
+        total_profit = 0.0
+        trades = {"Quantity": 0,
+                  "Open_Price": 0,
+                  "Total_Amount": 0}
+
         for index, row in prepared_df.iterrows():
             if row['Trade'] == 'BUY__':
-                self.deals.write_deals('buy', -row['close'], 1)
-                print('row -1', row['close'][-1])
-            
-            elif row['Trade'] == 'CLOSE':
-                self.deals.write_deals('close', +row['close'], 1)
-                #print('CLOSE', row['loc_max'])
-                pass
-        """
-        # prepared_df.loc[(prepared_df['Trade'] == 'BUY__', "Balance")] = - prepared_df['loc_min']
+                temp_trades = {"Quantity": 1,
+                               "Open_Price": row['close'],
+                               "Total_Amount": row['close']}
 
-        # print(prepared_df.to_string())
+                trades["Quantity"] = trades["Quantity"] + temp_trades["Quantity"]
+                trades["Total_Amount"] = trades["Total_Amount"] + temp_trades["Total_Amount"]
+                trades['Open_Price'] = trades["Total_Amount"] / trades["Quantity"]
+                #print("Open", trades)
+                # self.trades.write_pos(1, row['close'])
+            if row['Trade'] == 'CLOSE':
+                profit = (float(row['close']) - float(trades['Open_Price'])) * float(trades['Quantity'])
+                total_profit += profit
+                #print("Close", trades, "profit:", profit)
+                trades = {"Quantity": 0,
+                          "Open_Price": 0,
+                          "Total_Amount": 0}
+                '''
+                try:
+                    open_pos = self.trades.read_positions()[0]  # FIX
+                    if float(open_pos['Open_Price']) > 0:
+                        profit = (float(row['close']) - float(open_pos['Open_Price'])) * float(open_pos['Quantity'])
+                        #print("profit:", profit, index, " avg open price:",
+                        #open_pos['Open_Price'], "close price:", row['close'], "Quantity:", open_pos['Quantity'])
+                        total_profit += profit
+                except:
+                    pass
+
+                self.trades.close_position()
+                # profit = profit + (open_pos['Open_Price'] - row['close'])
+                '''
+        self.trades.close_position()
+        if total_profit > 10.0:
+            print(total_profit)
+        else:
+            return
+        #print(prepared_df.to_string())
         return prepared_df
-
-
-    """run strategy with default or updated values"""
-
-    """
-    if "long" we buy -> "position" == price 
-    if "short" && position we sell -> current price - "position"
-    if  
-    """
 
     def position(self, prepared_df):
         # buy if signal is Long
