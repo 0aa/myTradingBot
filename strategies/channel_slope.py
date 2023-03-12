@@ -9,6 +9,7 @@ class ChannelSlope:
 
         self.dataframe = obj.dataframe
         self.trades = obj.trades
+        self.bot = obj.bot
 
         """default strategy values"""
         self.long_slope = None
@@ -96,12 +97,24 @@ class ChannelSlope:
                 trades["Quantity"] = trades["Quantity"] + temp_trades["Quantity"]
                 trades["Total_Amount"] = trades["Total_Amount"] + temp_trades["Total_Amount"]
                 trades['Open_Price'] = trades["Total_Amount"] / trades["Quantity"]
-                #print("Open", trades)
+                print("Open", trades)
                 # self.trades.write_pos(1, row['close'])
-            if row['Trade'] == 'CLOSE':
+
+                self.bot.send_message(f"Open: {trades}"
+                                      f"\nClose price: {row['close']}"
+                                      f"\nTotal Profit: {total_profit}")
+
+            if row['Trade'] == 'CLOSE' and trades['Open_Price'] > 0:
                 profit = (float(row['close']) - float(trades['Open_Price'])) * float(trades['Quantity'])
                 total_profit += profit
-                #print("Close", trades, "profit:", profit)
+
+                print(f"Close: {trades} close price: {row['close']} profit: {profit}")
+
+                self.bot.send_message(f"Close: {trades}"
+                                      f"\nClose price: {row['close']}"
+                                      f"\nProfit: {profit}"
+                                      f"\nTotal Profit: {total_profit}")
+
                 trades = {"Quantity": 0,
                           "Open_Price": 0,
                           "Total_Amount": 0}
@@ -120,10 +133,7 @@ class ChannelSlope:
                 # profit = profit + (open_pos['Open_Price'] - row['close'])
                 '''
         self.trades.close_position()
-        if total_profit > 10.0:
-            print(total_profit)
-        else:
-            return
+        print(total_profit)
         #print(prepared_df.to_string())
         return prepared_df
 

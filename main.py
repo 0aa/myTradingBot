@@ -6,11 +6,12 @@ import requests
 import websocket
 import threading
 from multiprocessing import Value, Process
-
+import config
 from strategies.channel_slope import ChannelSlope
 from helpers.helpers import close_if_below, close_if_above
 from backtest.backtest import Backtest
 from helpers.csv_logs import Trades
+from telegram.bot import Bot
 
 
 class DataStream:
@@ -24,6 +25,7 @@ class DataStream:
         self.deals_array = pd.DataFrame(columns=['pos_id', 'pos_type', 'open_price', 'volume',
                                                  'volume_left', 'profit_grid', 'stop_grid', 'status', 'profit'])
         self.trades = Trades(self.symbol, self.timeframe, self.limit)
+        self.bot = Bot()
 
     def get_initial_klines(self):
         x = requests.get(
@@ -122,8 +124,8 @@ def test_strategy(obj):
     apply_str = ChannelSlope(obj)  # pass the DataStream obj to the strategy class
     apply_str.set_custom_vals()
     apply_bt = Backtest(apply_str)  # pass strategy to backtest
-    apply_bt.montecarlo = True
-    apply_bt.num_runs = 1000
+    apply_bt.montecarlo = False
+    apply_bt.num_runs = 1
     apply_bt.run_pool()
     # start loop
 
@@ -138,12 +140,14 @@ if __name__ == "__main__":
     last Y always should be 100 - since we want to close 100% of the lot '''
     profit_stop = {'take_profit': [[2, 20], [3, 20], [4, 20], [5, 20], [6, 100]],
                    'stop_loss': [[1, 50], [2, 100], ]}  # <====try to optimize
-    # api_key = ""
-    # secret_key = ""
+    """config file needs to be created with the api keys/tokens"""
+    api_key = config.BINANCE_API_KEY
+    secret_key = config.BINANCE_API_SECRET_KEY
     # api_url = 'https://api.binance.us'
+
     SYMBOL = 'ETHUSDT'
     LIMIT = '100'
-    TIMEFRAME = '5m'
+    TIMEFRAME = '30m'
 
     # create class object with the data we need
     eth = DataStream(SYMBOL, TIMEFRAME, LIMIT)
