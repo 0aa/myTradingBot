@@ -1,6 +1,6 @@
 import csv
 import os
-from src.utils import get_project_root
+from utils.utils import get_project_root
 
 
 def read_positions_from_csv(file_path):

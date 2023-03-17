@@ -1,6 +1,5 @@
-from indicators.indicators import Indicators as Ind
+from strategies.indicators import Indicators as Ind
 import numpy as np
-from helpers.csv_logs import Trades
 
 
 class ChannelSlope:
@@ -9,7 +8,7 @@ class ChannelSlope:
 
         self.dataframe = obj.dataframe
         self.trades = obj.trades
-        self.bot = obj.bot
+        self.bot = obj.tg_bot
 
         """default strategy values"""
         self.long_slope = None
@@ -36,14 +35,34 @@ class ChannelSlope:
 
     def set_custom_vals(self):
         """custom strategy values"""
-        self.short_slope = 12
-        self.long_slope = -88
-        self.short_pos_in_channel = 0.72
-        self.long_pos_in_channel = 0.62
+        self.short_slope = 45
+        self.long_slope = -70
+        self.short_pos_in_channel = 0.9
+        self.long_pos_in_channel = 0.9
         """custom indicators values"""
-        self.atr_period = 13
+        self.atr_period = 8
         self.maxmin_period = 7
-        self.slope_period = 5
+        self.slope_period = 29
+
+    '''default params = [5, 5, 0.5, 0.5, 14, 10, 5]'''
+    def set_custom_vals_opt(self, params):
+        self.short_slope, \
+        self.long_slope, \
+        self.short_pos_in_channel, \
+        self.long_pos_in_channel, \
+        self.atr_period, \
+        self.maxmin_period, \
+        self.slope_period = params
+        self.convert_to_right_type()
+
+    def convert_to_right_type(self):
+        self.short_slope = int(self.short_slope)
+        self.long_slope = int(self.long_slope)
+        self.short_pos_in_channel = self.short_pos_in_channel/10
+        self.long_pos_in_channel = self.long_pos_in_channel/10
+        self.atr_period = int(self.atr_period)
+        self.maxmin_period = int(self.maxmin_period)
+        self.slope_period = int(self.slope_period)
 
     def prepare_df(self):
         return Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period)
@@ -90,9 +109,10 @@ class ChannelSlope:
 
         for index, row in prepared_df.iterrows():
             if row['Trade'] == 'BUY__':
-                temp_trades = {"Quantity": 1,
+                lot = 5
+                temp_trades = {"Quantity": lot,
                                "Open_Price": row['close'],
-                               "Total_Amount": row['close']}
+                               "Total_Amount": row['close']*lot}
 
                 trades["Quantity"] = trades["Quantity"] + temp_trades["Quantity"]
                 trades["Total_Amount"] = trades["Total_Amount"] + temp_trades["Total_Amount"]
@@ -134,8 +154,9 @@ class ChannelSlope:
                 '''
         self.trades.close_position()
         print(total_profit)
-        #print(prepared_df.to_string())
-        return prepared_df
+        # print(prepared_df.to_string())
+        total_profit_min = -total_profit
+        return total_profit_min
 
     def position(self, prepared_df):
         # buy if signal is Long

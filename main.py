@@ -1,81 +1,23 @@
-import json
 import time
 import copy
-import pandas as pd
-import requests
-import websocket
 import threading
-from multiprocessing import Value, Process
-import config
+
+from brokers.binance import Binance
 from strategies.channel_slope import ChannelSlope
-from helpers.helpers import close_if_below, close_if_above
 from backtest.backtest import Backtest
-from helpers.csv_logs import Trades
-from telegram.bot import Bot
+from utils.csv_util import Trades
+from utils.telegram_bot import TelegramBot
 
 
-class DataStream:
-
+class TradingBot:
     def __init__(self, symbol, timeframe, limit):
-        self.symbol = symbol
-        self.timeframe = timeframe
-        self.limit = str(limit)
-        self.dataframe = self.get_initial_klines()
-        self.profit_stop = {}
-        self.deals_array = pd.DataFrame(columns=['pos_id', 'pos_type', 'open_price', 'volume',
-                                                 'volume_left', 'profit_grid', 'stop_grid', 'status', 'profit'])
-        self.trades = Trades(self.symbol, self.timeframe, self.limit)
-        self.bot = Bot()
+        self.broker = Binance(symbol, timeframe, limit)
+        self.dataframe = self.broker.dataframe
+        self.trades = Trades(symbol, timeframe, limit)
+        self.tg_bot = TelegramBot()
 
-    def get_initial_klines(self):
-        x = requests.get(
-            f'https://api.binance.us/api/v3/klines?symbol={self.symbol}&limit={self.limit}&interval={self.timeframe}')
-        self.dataframe = pd.DataFrame(x.json())
-        self.dataframe.drop([6, 7, 8, 9, 10, 11], axis=1, inplace=True)
-        self.dataframe.rename(columns={0: 'timestamp',
-                                       1: 'open',
-                                       2: 'high',
-                                       3: 'low',
-                                       4: 'close',
-                                       5: 'volume'}, inplace=True)
-        self.dataframe['timestamp'] = pd.to_datetime(self.dataframe['timestamp'] // 1000, unit='s')
-        self.dataframe = self.dataframe.astype({'open': 'float64',
-                                                'high': 'float64',
-                                                'low': 'float64',
-                                                'close': 'float64',
-                                                'volume': 'float64'})
-        return self.dataframe
 
-    # process websocket data and append it to the initial-data dataframe
-    def on_message(self, ws, message):
-        j = json.loads(message)['k']
-        if j['x']:
-            temp_df = pd.DataFrame([[j['T'], j['o'], j['h'], j['l'], j['c'], j['v']]],
-                                   columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            temp_df['timestamp'] = pd.to_datetime(j['T'] // 1000, unit='s')
-            temp_df = temp_df.astype({'open': 'float64',
-                                      'high': 'float64',
-                                      'low': 'float64',
-                                      'close': 'float64',
-                                      'volume': 'float64'})
-            self.dataframe.drop(index=self.dataframe.index[0],
-                                axis=0,
-                                inplace=True)
-            self.dataframe = pd.concat([self.dataframe, temp_df], sort=False, ignore_index=True)
-            self.dataframe.reset_index(drop=True)
-
-    @staticmethod
-    def on_close(ws):
-        print('### closed ###')
-
-    # receive real-time updates from websocket
-    def receive_stream_data(self):
-        socket = f'wss://stream.binance.us:9443/ws/{self.symbol.lower()}@kline_{self.timeframe}'
-        ws = websocket.WebSocketApp(socket, on_message=self.on_message, on_close=self.on_close)
-        ws.run_forever()
-
-    def start(self):
-        self.receive_stream_data()
+"""the following will be moved to TradeEngine() module"""
 
 
 # check if we need to close existing position at the current price
@@ -87,11 +29,9 @@ def check_if_close(temp_df, price):
         pos_type = temp_df.loc[i]['pos_type']
         match pos_type:
             case 'long':
-                close_if_below('stop_grid', price, i)
-                close_if_above('profit_grid', price, i)
+                pass
             case 'short':
-                close_if_below('profit_grid', price, i)
-                close_if_above('stop_grid', price, i)
+                pass
 
 
 # process the (stream) data
@@ -118,41 +58,50 @@ def process_data(obj):
             time.sleep(10)
 
 
-''' obj - is DataStream object (eth, shib, etc.)'''
+''' the following needs to be moved inside BackTest module
+obj - is DataStream object (eth, shib, etc.)'''
+
+
 def test_strategy(obj):
     # dataframe = obj.dataframe  # pull dataframe from the object
     apply_str = ChannelSlope(obj)  # pass the DataStream obj to the strategy class
-    apply_str.set_custom_vals()
+    apply_str.set_default_vals()
     apply_bt = Backtest(apply_str)  # pass strategy to backtest
     apply_bt.montecarlo = False
     apply_bt.num_runs = 1
     apply_bt.run_pool()
     # start loop
-
     # exit from the loop
     # save results
     # optimize results
 
 
-if __name__ == "__main__":
-    '''[X, Y], where X is percent of price to calculate stop/profit
-    and Y is percent of lot to close position i.e. [2,10] - 2% of price and 20% of LOT LEFT(!)
-    last Y always should be 100 - since we want to close 100% of the lot '''
-    profit_stop = {'take_profit': [[2, 20], [3, 20], [4, 20], [5, 20], [6, 100]],
-                   'stop_loss': [[1, 50], [2, 100], ]}  # <====try to optimize
-    """config file needs to be created with the api keys/tokens"""
-    api_key = config.BINANCE_API_KEY
-    secret_key = config.BINANCE_API_SECRET_KEY
-    # api_url = 'https://api.binance.us'
+'''
+SYMBOL = 'ETHUSDT'
+LIMIT = '100'
+TIMEFRAME = '5m'
+obj = DataStream(SYMBOL, TIMEFRAME, LIMIT)
+apply_str = ChannelSlope(obj)  # pass the DataStream obj to the strategy class
+'''
 
+
+def minimize_params(params):
+    print(params)
+    apply_str.set_custom_vals_opt(params)
+    apply_bt = Backtest(apply_str)  # pass strategy to backtest
+    return apply_bt.run_static_backtest()
+
+
+"""start point"""
+if __name__ == "__main__":
+
+    """config file needs to be created with the api keys/tokens"""
     SYMBOL = 'ETHUSDT'
     LIMIT = '100'
     TIMEFRAME = '30m'
 
     # create class object with the data we need
-    eth = DataStream(SYMBOL, TIMEFRAME, LIMIT)
-    eth.profit_stop = profit_stop
-
+    eth = TradingBot(SYMBOL, TIMEFRAME, LIMIT)
 
     # t = threading.Thread(name='receive_stream_data', target=eth.start)
     # w = threading.Thread(name='process data', target=process_data, args=(eth,))
@@ -162,6 +111,6 @@ if __name__ == "__main__":
     # w.start()
     backtest.start()
 
-    # w.join()
     # t.join()
+    # w.join()
     backtest.join()

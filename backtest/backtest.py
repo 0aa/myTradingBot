@@ -27,11 +27,12 @@ class Backtest:
             """backtest itself"""
             if self.montecarlo: self.obj.set_random_vals()
             self.obj.run_test()
-
-            """reporting"""
+            """
+            '''reporting'''
             run_params = vars(self.obj)
             run_params.pop('dataframe')
             #print(run_params)
+            """
         except:
             pass
 

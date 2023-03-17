@@ -3,12 +3,12 @@ import requests
 import config
 
 
-class Bot:
+class TelegramBot:
 
     def __init__(self):
         """config file needs to be created with the api keys/tokens"""
         self.url = f"https://api.telegram.org/bot{config.BOT_API_TOKEN}/"
-        self.chat_id = -1001808333933
+        self.chat_id = config.CHAT_ID
 
     def get_all_updates(self):  # получаем все сообщения полученные ботом за последние сутки
         response = requests.get(self.url + 'getUpdates')

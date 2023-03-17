@@ -3,7 +3,7 @@ store open positions
 """
 import time
 
-from src.utils import get_project_root
+from utils.utils import get_project_root
 import csv
 
 """
