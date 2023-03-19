@@ -1,3 +1,5 @@
+import copy
+
 from strategies.indicators import Indicators as Ind
 import numpy as np
 
@@ -6,7 +8,7 @@ class ChannelSlope:
 
     def __init__(self, obj):
 
-        self.dataframe = obj.dataframe
+        self.dataframe = obj.broker.dataframe
         self.trades = obj.trades
         self.bot = obj.tg_bot
 
@@ -45,6 +47,7 @@ class ChannelSlope:
         self.slope_period = 29
 
     '''default params = [5, 5, 0.5, 0.5, 14, 10, 5]'''
+
     def set_custom_vals_opt(self, params):
         self.short_slope, \
         self.long_slope, \
@@ -58,14 +61,15 @@ class ChannelSlope:
     def convert_to_right_type(self):
         self.short_slope = int(self.short_slope)
         self.long_slope = int(self.long_slope)
-        self.short_pos_in_channel = self.short_pos_in_channel/10
-        self.long_pos_in_channel = self.long_pos_in_channel/10
+        self.short_pos_in_channel = self.short_pos_in_channel / 10
+        self.long_pos_in_channel = self.long_pos_in_channel / 10
         self.atr_period = int(self.atr_period)
         self.maxmin_period = int(self.maxmin_period)
         self.slope_period = int(self.slope_period)
 
     def prepare_df(self):
-        return Ind.PrepareDF(self.dataframe, self.atr_period, self.maxmin_period)
+        prepared_df = copy.copy(self.dataframe)
+        return Ind.prepareDF(prepared_df, self.atr_period, self.maxmin_period)
 
     """update strategy and indicators values with random values"""
 
@@ -112,7 +116,7 @@ class ChannelSlope:
                 lot = 5
                 temp_trades = {"Quantity": lot,
                                "Open_Price": row['close'],
-                               "Total_Amount": row['close']*lot}
+                               "Total_Amount": row['close'] * lot}
 
                 trades["Quantity"] = trades["Quantity"] + temp_trades["Quantity"]
                 trades["Total_Amount"] = trades["Total_Amount"] + temp_trades["Total_Amount"]
@@ -158,24 +162,15 @@ class ChannelSlope:
         total_profit_min = -total_profit
         return total_profit_min
 
-    def position(self, prepared_df):
-        # buy if signal is Long
-        prepared_df.loc[(prepared_df['Trade'] == "Long", "Pos")] = prepared_df['close']
-        prepared_df.loc[(prepared_df['Trade'] == "Long", "Pos")]
-
-        return prepared_df
-
     def run(self):
         prepared_df = self.prepare_df()
+        prepared_df.loc[((prepared_df['slope'] < - self.long_slope)
+                         & (prepared_df['loc_min'].notna())
+                         & (prepared_df['ATR'].notna())
+                         & (prepared_df['pos_in_ch'] < self.long_pos_in_channel)), 'Trade'] = 'BUY__'
 
-        # print(prepared_df.to_string())
-        signal = None
-        if (prepared_df['loc_min'][-1] > 0) and (prepared_df['pos_in_ch'][-1] < self.long_pos_in_channel) and (
-                prepared_df['slope'][-1] < - self.long_slope):
-            # found a good enter point for LONG
-            signal = 'long'
-        if (prepared_df['loc_max'][-1] > 0) and (prepared_df['pos_in_ch'][-1] > self.short_pos_in_channel) and (
-                prepared_df['slope'][-1] > self.short_slope):
-            # found a good enter point for SHORT
-            signal = 'short'
-        return signal, prepared_df.at[-1, 'close']
+        prepared_df.loc[((prepared_df['slope'] > self.short_slope)
+                         & (prepared_df['loc_max'].notna())
+                         & (prepared_df['ATR'].notna())
+                         & (prepared_df['pos_in_ch'] > self.short_pos_in_channel)), 'Trade'] = 'CLOSE'
+        return prepared_df['Trade'].iloc[-1]

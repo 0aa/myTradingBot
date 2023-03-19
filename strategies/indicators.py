@@ -5,7 +5,9 @@ import pandas as pd
 import statsmodels.api as sm
 import numpy as np
 from finta import TA
+
 np.seterr(divide='ignore', invalid='ignore')
+
 
 class Indicators:
 
@@ -42,7 +44,8 @@ class Indicators:
     # DF - dataframe
 
     @classmethod
-    def PrepareDF(cls, df, atr_period: int = 14, maxmin_period: int = 10, slope_period: int = 5):  # <====try to optimize
+    def prepareDF(cls, df, atr_period: int = 14, maxmin_period: int = 10,
+                  slope_period: int = 5):  # <====try to optimize
         df = cls.local_min_max(df)
         df['ATR'] = TA.ATR(df, atr_period)  # <====try to optimize
         df['slope'] = cls.indSlope(df['close'], slope_period)  # <====try to optimize
