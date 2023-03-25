@@ -1,30 +1,15 @@
 import copy
-
-from strategies.indicators import Indicators as Ind
 import numpy as np
+import pandas as pd
+from strategies.indicators import Indicators as Ind
 
 
 class ChannelSlope:
 
     def __init__(self, obj):
-
-        self.dataframe = obj.broker.dataframe
+        self.obj = obj
         self.trades = obj.trades
         self.bot = obj.tg_bot
-
-        """default strategy values"""
-        self.long_slope = None
-        self.short_slope = None
-        self.short_pos_in_channel = None
-        self.long_pos_in_channel = None
-        """default indicators values"""
-        self.atr_period = None
-        self.maxmin_period = None
-        self.slope_period = None
-        """set all values to default"""
-        self.set_default_vals()  # set the values to default
-
-    def set_default_vals(self):
         """default strategy values"""
         self.short_slope = 5
         self.long_slope = 5
@@ -67,10 +52,6 @@ class ChannelSlope:
         self.maxmin_period = int(self.maxmin_period)
         self.slope_period = int(self.slope_period)
 
-    def prepare_df(self):
-        prepared_df = copy.copy(self.dataframe)
-        return Ind.prepareDF(prepared_df, self.atr_period, self.maxmin_period)
-
     """update strategy and indicators values with random values"""
 
     def set_random_vals(self):
@@ -90,30 +71,23 @@ class ChannelSlope:
         self.maxmin_period = int(np.random.default_rng().normal(10, 2))
         self.slope_period = int(np.random.default_rng().normal(5, 2))
 
+    def prepare_df(self, dataframe):
+        prepared_df = copy.copy(dataframe)
+        return Ind.prepareDF_gpt(prepared_df, self.atr_period, self.maxmin_period)
+
     # wip
-    def run_test(self):
-
-        prepared_df = self.prepare_df()
-
-        prepared_df.loc[((prepared_df['slope'] < - self.long_slope)
-                         & (prepared_df['loc_min'].notna())
-                         & (prepared_df['ATR'].notna())
-                         & (prepared_df['pos_in_ch'] < self.long_pos_in_channel)), 'Trade'] = 'BUY__'
-
-        prepared_df.loc[((prepared_df['slope'] > self.short_slope)
-                         & (prepared_df['loc_max'].notna())
-                         & (prepared_df['ATR'].notna())
-                         & (prepared_df['pos_in_ch'] > self.short_pos_in_channel)), 'Trade'] = 'CLOSE'
+    def run_test(self, dataframe=pd.Series(dtype='int64')):
+        prepared_df = self.prepare_df(dataframe) if not dataframe.empty else self.prepare_df(self.obj.broker.dataframe)
+        prepared_df = self.find_trades(prepared_df)
 
         """test with line by line and deals file"""
         total_profit = 0.0
         trades = {"Quantity": 0,
                   "Open_Price": 0,
                   "Total_Amount": 0}
-
         for index, row in prepared_df.iterrows():
             if row['Trade'] == 'BUY__':
-                lot = 5
+                lot = 1
                 temp_trades = {"Quantity": lot,
                                "Open_Price": row['close'],
                                "Total_Amount": row['close'] * lot}
@@ -142,35 +116,28 @@ class ChannelSlope:
                 trades = {"Quantity": 0,
                           "Open_Price": 0,
                           "Total_Amount": 0}
-                '''
-                try:
-                    open_pos = self.trades.read_positions()[0]  # FIX
-                    if float(open_pos['Open_Price']) > 0:
-                        profit = (float(row['close']) - float(open_pos['Open_Price'])) * float(open_pos['Quantity'])
-                        #print("profit:", profit, index, " avg open price:",
-                        #open_pos['Open_Price'], "close price:", row['close'], "Quantity:", open_pos['Quantity'])
-                        total_profit += profit
-                except:
-                    pass
-
-                self.trades.close_position()
-                # profit = profit + (open_pos['Open_Price'] - row['close'])
-                '''
         self.trades.close_position()
         print(total_profit)
         # print(prepared_df.to_string())
         total_profit_min = -total_profit
         return total_profit_min
 
-    def run(self):
-        prepared_df = self.prepare_df()
+    # find trades in the prepared dataframe
+    def find_trades(self, prepared_df):
         prepared_df.loc[((prepared_df['slope'] < - self.long_slope)
                          & (prepared_df['loc_min'].notna())
                          & (prepared_df['ATR'].notna())
-                         & (prepared_df['pos_in_ch'] < self.long_pos_in_channel)), 'Trade'] = 'BUY__'
+                         & (prepared_df['pos_in_ch'] < self.long_pos_in_channel)
+                         & (prepared_df['rsi'] < 30)), 'Trade'] = 'BUY__'
 
         prepared_df.loc[((prepared_df['slope'] > self.short_slope)
                          & (prepared_df['loc_max'].notna())
                          & (prepared_df['ATR'].notna())
-                         & (prepared_df['pos_in_ch'] > self.short_pos_in_channel)), 'Trade'] = 'CLOSE'
-        return prepared_df['Trade'].iloc[-1]
+                         & (prepared_df['pos_in_ch'] > self.short_pos_in_channel)
+                         & (prepared_df['rsi'] > 70)), 'Trade'] = 'CLOSE'
+        return prepared_df
+
+    def run(self, dataframe=pd.Series(dtype='int64')):
+        prepared_df = self.prepare_df(dataframe) if not dataframe.empty else self.prepare_df(self.obj.broker.dataframe)
+        #print('run:\n', self.find_trades(prepared_df).tail().to_string())
+        return self.find_trades(prepared_df)['Trade'].iloc[-1]

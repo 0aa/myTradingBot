@@ -67,7 +67,7 @@ class Binance:
         ws = websocket.WebSocketApp(socket, on_message=self.on_message, on_close=self.on_close)
         ws.run_forever()
 
-    def start(self):
+    def start_stream(self):
         self.receive_stream_data()
 
     # get binance.us signature
