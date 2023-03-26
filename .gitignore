@@ -2,3 +2,4 @@
 /.idea/
 /.playground/
 config.py
+Dockerfile

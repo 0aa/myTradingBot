@@ -14,13 +14,19 @@ class TradingBot:
         # self.dataframe = self.broker.dataframe
         self.trades = Trades(symbol, timeframe, limit)
         self.tg_bot = TelegramBot()
+        self.initial_message()
 
     def start_stream(self):
         self.broker.start_stream()
 
+    def initial_message(self):
+        text = (f"Type: TEST"
+                f"\nSymbol: {self.broker.symbol}"
+                f"\nTimeframe: {self.broker.timeframe}"
+                f"\nTime: {time.strftime('%H:%M:%S', time.localtime())}")
+        self.tg_bot.send_message(text)
 
 # process the (stream) data
-# determine if we need to close or open a position
 def run_trading_bot(obj):
     old_df = copy.copy(obj.broker.dataframe)
     strategy = ChannelSlope(obj)
@@ -34,7 +40,12 @@ def run_trading_bot(obj):
             old_df = copy.copy(obj.broker.dataframe)
             # all the indicators suppose to return signal and current or future price
             signal = strategy.run()
-            print('signal', signal)
+
+            if signal in ['CLOSE', 'BUY__']:
+                text = (f"Signal: {signal}"
+                        f"\nPrice: {old_df['close'].iloc[-1]}"
+                        f"\nTime: {old_df['timestamp'].iloc[-1]}")
+                obj.tg_bot.send_message(text)
 
             time.sleep(50)
 

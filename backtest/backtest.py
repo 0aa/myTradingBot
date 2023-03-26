@@ -1,7 +1,5 @@
-import concurrent.futures
 from multiprocessing import Pool
 import pandas as pd
-
 from main import TradingBot
 from strategies.channel_slope import ChannelSlope
 
@@ -20,23 +18,27 @@ class Backtest:
         self.montecarlo = False
         self.position = None
         self.total_profit = 0
+        self.num_positions = 4  # maximum number of positions that can be open simultaneously
+        self.positions = []  # list of currently open positions
 
     def apply_strategy(self, destination_df):
         try:
             signal = self.obj.run(destination_df)
             current_price = destination_df['close'].iloc[-1]
             if signal == 'BUY__':
-                if self.position is None:
-                    self.position = current_price
-                    print('BUY:', destination_df['timestamp'].iloc[-1], 'price:', current_price)
+                if self.position is None and len(self.positions) < self.num_positions:
+                    self.positions.append(current_price)
+                    print('BUY:', destination_df['timestamp'].iloc[-1], 'price:', current_price, self.positions)
             elif signal == 'CLOSE':
-                if self.position is not None:
-                    profit = current_price - self.position
-                    self.total_profit += profit
-                    self.position = None
-                    print('CLOSE:', destination_df['timestamp'].iloc[-1], 'price:', current_price, 'profit:', profit)
+                if self.position is not None or len(self.positions) > 0:
+                    for position_price in self.positions:
+                        profit = current_price - position_price
+                        self.total_profit += profit
+                    self.positions = []
+                    print('CLOSE:', destination_df['timestamp'].iloc[-1], 'price:', current_price, 'total profit:', self.total_profit)
         except:
             pass
+
     '''
     static backtest is for existing static dataframe only, for live data will use live backtest  
     '''
@@ -67,8 +69,8 @@ class Backtest:
     """iterate thru dataframe and add the last row of initial dataframe to a new one
     while applying all the indicators and identifying entry points"""
 
-    def run_live_simulation(self, n):
-        n = n  # the number of runs
+    def run_live_simulation(self, n=None):
+        n = self.num_runs  # the number of runs
         source_df = self.obj.obj.broker.dataframe
         destination_df = pd.DataFrame(columns=source_df.columns)
         max_rows = 50
@@ -84,7 +86,8 @@ class Backtest:
                 destination_df = destination_df.iloc[1:]
             # apply strategy to see if there is a signal
             self.apply_strategy(destination_df)
-        print("total profit:", self.total_profit)
+        print('profit:', self.total_profit)
+        return -self.total_profit
 
     def run_backtest(self, method=None):
         if method not in ['static_simulation', 'live_simulation']:
@@ -98,33 +101,32 @@ class Backtest:
     def live_simulation(self, pool, runs):
         pool.map(self.run_live_simulation, runs)
 
-    def drawdown(self):
-        pass
-
-    def sharp_caf(self):
-        pass
-
 
 ''' obj - is DataStream object (eth, shib, etc.)'''
 
 
-def test_strategy(obj, simulation_type='live', start=ChannelSlope):
+def test_strategy(obj, simulation_type='live', strategy=ChannelSlope):
     # Pass the DataStream obj to the strategy class
-    apply_str = start(obj)
-    #apply_str.set_default_vals()
+    apply_strategy = strategy(obj)
+    #apply_strategy.set_custom_vals()
+    opt = [32, -23, 0.76, 0.62, 23, 21, 29]
+    apply_strategy.set_custom_vals_opt(opt)
+
+
     # Pass strategy to backtest
-    apply_bt = Backtest(apply_str)
-    apply_bt.montecarlo = False
-    apply_bt.num_runs = 1
+    apply_backtest = Backtest(apply_strategy)
+    apply_backtest.montecarlo = False
+    apply_backtest.num_runs = 1
+
     # Run the backtest with the appropriate method
-    apply_bt.run_backtest(f"{simulation_type}_simulation")
+    apply_backtest.run_backtest(f"{simulation_type}_simulation")
 
 
 if __name__ == '__main__':
-    SYMBOL = 'ETHUSDT'
-    LIMIT = '100'
-    TIMEFRAME = '15m'
+
+    SYMBOL = 'LTCUSDT'
+    LIMIT = '150'
+    TIMEFRAME = '5m'
 
     eth_test = TradingBot(SYMBOL, TIMEFRAME, LIMIT)
-    # test_strategy_static(eth_test)
     test_strategy(eth_test, 'live')

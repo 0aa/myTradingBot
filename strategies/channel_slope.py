@@ -32,7 +32,7 @@ class ChannelSlope:
         self.slope_period = 29
 
     '''default params = [5, 5, 0.5, 0.5, 14, 10, 5]'''
-
+    # [32, -23, 0.76, 0.62, 23, 21, 29]
     def set_custom_vals_opt(self, params):
         self.short_slope, \
         self.long_slope, \
@@ -46,8 +46,8 @@ class ChannelSlope:
     def convert_to_right_type(self):
         self.short_slope = int(self.short_slope)
         self.long_slope = int(self.long_slope)
-        self.short_pos_in_channel = self.short_pos_in_channel / 10
-        self.long_pos_in_channel = self.long_pos_in_channel / 10
+        self.short_pos_in_channel = float(self.short_pos_in_channel)
+        self.long_pos_in_channel = float(self.long_pos_in_channel)
         self.atr_period = int(self.atr_period)
         self.maxmin_period = int(self.maxmin_period)
         self.slope_period = int(self.slope_period)

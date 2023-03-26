@@ -80,3 +80,10 @@ class PerformanceAnalytics:
             "daily_volatility": self.daily_volatility()
         }
         return metrics
+
+
+    def drawdown(self):
+        pass
+
+    def sharp_caf(self):
+        pass
