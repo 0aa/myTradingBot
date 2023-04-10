@@ -12,6 +12,9 @@ class TradeAnalysis:
     def num_trades(self):
         return len(self.df)
 
+    def num_days(self):
+        return (self.df['Timestamp'].iloc[-1] - self.df['Timestamp'].iloc[0]).days
+
     def num_winning_trades(self):
         return len(self.df[self.df['Close Profit'] > 0])
 
@@ -39,12 +42,11 @@ class TradeAnalysis:
     def annualized_return(self, initial_capital, num_days=365):
         if len(self.df) == 0:
             return 0
-        total_days = (self.df['Timestamp'].iloc[-1] - self.df['Timestamp'].iloc[0]).days
-        print (total_days)
+        total_days = self.num_days()
         # Check if total_days is zero and return 0 to avoid ZeroDivisionError
         if total_days == 0:
             return 0
-        total_return_decimal = self.total_return(initial_capital)/100
+        total_return_decimal = self.total_return(initial_capital)
         annualized_return = ((1 + total_return_decimal) ** (num_days / total_days)) - 1
         return annualized_return
 
@@ -53,11 +55,20 @@ class TradeAnalysis:
         excess_returns = daily_returns - risk_free_rate
         return excess_returns.mean() / excess_returns.std()
 
+    def sharpe_ratio_meaning(self):
+        ratio = self.sharpe_ratio()
+        if ratio < 1:
+            return "Poor"
+        elif 1 <= ratio < 2:
+            return "Good"
+        else:
+            return "Excellent"
+
     def avg_daily_return(self):
         daily_returns = self.df['Close Profit'].pct_change().dropna()
         return daily_returns.mean()
 
-    def daily_volatility(self):
+    def avg_daily_volatility(self):
         daily_returns = self.df['Close Profit'].pct_change().dropna()
         return daily_returns.std()
 
@@ -76,16 +87,17 @@ class TradeAnalysis:
 
     def report(self):
         return (
-            f"num_trades: {self.num_trades()}\n"
-            f"num_winning_trades: {self.num_winning_trades()}\n"
-            f"num_losing_trades: {self.num_losing_trades()}\n"
-            f"total_profit_loss: {self.total_profit_loss()}$\n"
-            f"win_loss_ratio: {self.win_loss_ratio()}\n"
-            f"average_holding_period: {self.average_holding_period()}\n"
-            f"total_return: {self.total_return(initial_capital=10000)}%\n"
-            f"annualized_return: {self.annualized_return(initial_capital=10000, num_days=365)}%\n"
-            f"sharpe_ratio: {self.sharpe_ratio(risk_free_rate=0)}\n"
-            f"max_drawdown: {self.max_drawdown()}\n"
-            f"avg_daily_return: {self.avg_daily_return()}\n"
-            f"daily_volatility: {self.daily_volatility()}"
+            f"Trades: {self.num_trades()}\n"
+            f"Days:{self.num_days()}\n"
+            f"Winning Trades: {self.num_winning_trades()}\n"
+            f"Losing Trades: {self.num_losing_trades()}\n"
+            f"Total Profit Loss: {round(self.total_profit_loss(),2)} USD\n"
+            f"Win/Loss Ratio: {self.win_loss_ratio()}\n"
+            f"Average Holding Period: {self.average_holding_period()}\n"
+            f"Rotal Return: {round(self.total_return(initial_capital=5000) * 100, 2)}%\n"
+            f"Annualized Return: {round(self.annualized_return(initial_capital=5000, num_days=365) * 100, 2)}%\n"
+            f"Sharpe Ratio: {round(self.sharpe_ratio(risk_free_rate=0), 3)} => {self.sharpe_ratio_meaning()}\n"
+            f"Max Drawdown: {round(self.max_drawdown(), 2)}%\n"
+            f"Avg Daily Return: {round(self.avg_daily_return(), 2)}\n"
+            f"Avg Daily Volatility: {round(self.avg_daily_volatility(), 2)}"
         )
