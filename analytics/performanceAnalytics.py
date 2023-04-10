@@ -1,89 +1,91 @@
+import pandas as pd
 import numpy as np
 
 
-class PerformanceAnalytics:
-    def __init__(self, initial_balance):
-        self.initial_balance = initial_balance
-        self.current_balance = initial_balance
-        self.num_trades = 0
-        self.num_winning_trades = 0
-        self.num_losing_trades = 0
-        self.total_profit_loss = 0
-        self.win_loss_ratio = 0
-        self.total_holding_period = 0
-        self.average_holding_period = 0
-        self.daily_returns = []
+class TradeAnalysis:
+    def __init__(self, df):
+        self.df = df
 
-    def update_trade_stats(self, trade_result, holding_period):
-        self.num_trades += 1
-        self.total_holding_period += holding_period
+    def modify_df(self):
+        self.df.loc[(self.df['Signal'] == 'CLOSE'), 'Max Invest'] = self.df['Amount'] * self.df['Price']
 
-        if trade_result > 0:
-            self.num_winning_trades += 1
-        elif trade_result < 0:
-            self.num_losing_trades += 1
+    def num_trades(self):
+        return len(self.df)
 
-        self.total_profit_loss += trade_result
-        self.current_balance += trade_result
+    def num_winning_trades(self):
+        return len(self.df[self.df['Close Profit'] > 0])
 
-        if self.num_winning_trades > 0:
-            self.win_loss_ratio = self.num_winning_trades / (self.num_winning_trades + self.num_losing_trades)
+    def num_losing_trades(self):
+        return len(self.df[self.df['Close Profit'] < 0])
 
-        if self.total_holding_period > 0:
-            self.average_holding_period = self.total_holding_period / self.num_trades
+    def total_profit_loss(self):
+        return self.df['Close Profit'].sum()
 
-        self.daily_returns.append(trade_result / self.initial_balance)
+    def win_loss_ratio(self):
+        winning_trades = self.num_winning_trades()
+        losing_trades = self.num_losing_trades()
+        return winning_trades / losing_trades if losing_trades != 0 else np.inf
 
-    def total_return(self):
-        return (self.current_balance - self.initial_balance) / self.initial_balance
+    def average_holding_period(self):
+        pass
 
-    def annualized_return(self, num_days):
-        total_return = self.total_return()
-        annualized_return = (1 + total_return) ** (365 / num_days) - 1
+    def total_return(self, initial_capital):
+        if len(self.df) == 0:
+            return 0
+        total_profit = self.df['Close Profit'].sum()
+        total_return = total_profit / initial_capital
+        return total_return
+
+    def annualized_return(self, initial_capital, num_days=365):
+        if len(self.df) == 0:
+            return 0
+        total_days = (self.df['Timestamp'].iloc[-1] - self.df['Timestamp'].iloc[0]).days
+        print (total_days)
+        # Check if total_days is zero and return 0 to avoid ZeroDivisionError
+        if total_days == 0:
+            return 0
+        total_return_decimal = self.total_return(initial_capital)/100
+        annualized_return = ((1 + total_return_decimal) ** (num_days / total_days)) - 1
         return annualized_return
 
-    def sharpe_ratio(self, risk_free_rate):
-        excess_returns = np.array(self.daily_returns) - risk_free_rate
-        sharpe_ratio = np.sqrt(365) * np.mean(excess_returns) / np.std(excess_returns)
-        return sharpe_ratio
-
-    def max_drawdown(self):
-        peak = self.initial_balance
-        max_drawdown = 0
-        for daily_return in self.daily_returns:
-            peak = max(peak, self.initial_balance * (1 + daily_return))
-            drawdown = (peak - self.initial_balance) / peak
-            max_drawdown = max(max_drawdown, drawdown)
-        return max_drawdown
+    def sharpe_ratio(self, risk_free_rate=0):
+        daily_returns = self.df['Close Profit'].pct_change().dropna()
+        excess_returns = daily_returns - risk_free_rate
+        return excess_returns.mean() / excess_returns.std()
 
     def avg_daily_return(self):
-        return np.mean(self.daily_returns)
+        daily_returns = self.df['Close Profit'].pct_change().dropna()
+        return daily_returns.mean()
 
     def daily_volatility(self):
-        return np.std(self.daily_returns)
+        daily_returns = self.df['Close Profit'].pct_change().dropna()
+        return daily_returns.std()
 
-    def get_performance_metrics(self):
-        metrics = {
-            "initial_balance": self.initial_balance,
-            "current_balance": self.current_balance,
-            "num_trades": self.num_trades,
-            "num_winning_trades": self.num_winning_trades,
-            "num_losing_trades": self.num_losing_trades,
-            "total_profit_loss": self.total_profit_loss,
-            "win_loss_ratio": self.win_loss_ratio,
-            "average_holding_period": self.average_holding_period,
-            "total_return": self.total_return(),
-            "annualized_return": self.annualized_return(num_days=365),
-            "sharpe_ratio": self.sharpe_ratio(risk_free_rate=0),
-            "max_drawdown": self.max_drawdown(),
-            "avg_daily_return": self.avg_daily_return(),
-            "daily_volatility": self.daily_volatility()
-        }
-        return metrics
+    def max_drawdown(self):
+        if len(self.df) == 0:
+            return 0
+        # Calculate the cumulative returns
+        cumulative_returns = (1 + self.df['Close Profit'].pct_change()).cumprod()
+        # Calculate the running maximum cumulative return
+        running_max = cumulative_returns.expanding().max()
+        # Calculate drawdowns
+        drawdowns = 1 - (cumulative_returns / running_max)
+        # Find the maximum drawdown
+        max_drawdown = drawdowns.max()
+        return max_drawdown
 
-
-    def drawdown(self):
-        pass
-
-    def sharp_caf(self):
-        pass
+    def report(self):
+        return (
+            f"num_trades: {self.num_trades()}\n"
+            f"num_winning_trades: {self.num_winning_trades()}\n"
+            f"num_losing_trades: {self.num_losing_trades()}\n"
+            f"total_profit_loss: {self.total_profit_loss()}$\n"
+            f"win_loss_ratio: {self.win_loss_ratio()}\n"
+            f"average_holding_period: {self.average_holding_period()}\n"
+            f"total_return: {self.total_return(initial_capital=10000)}%\n"
+            f"annualized_return: {self.annualized_return(initial_capital=10000, num_days=365)}%\n"
+            f"sharpe_ratio: {self.sharpe_ratio(risk_free_rate=0)}\n"
+            f"max_drawdown: {self.max_drawdown()}\n"
+            f"avg_daily_return: {self.avg_daily_return()}\n"
+            f"daily_volatility: {self.daily_volatility()}"
+        )
