@@ -1,59 +1,123 @@
-import hashlib
+import requests
 import hmac
 import json
-import time
-import urllib
-import requests
 import pandas as pd
-import websocket
+
+from time import time
+from hashlib import sha256
+from urllib import parse
+from datetime import datetime, timedelta
+from pytz import timezone
+from websocket import WebSocketApp
 
 import config
 
 
 class Binance:
-    def __init__(self, symbol, timeframe, limit):
+    def __init__(self, symbol, timeframe, limit=None, start_date=None, end_date=None):
         self.symbol = symbol
         self.timeframe = timeframe
         self.limit = str(limit)
         self.__api_key = config.BINANCE_API_KEY
         self.__api_sec = config.BINANCE_API_SECRET_KEY
         self.api_url = 'https://api.binance.us'
-        self.dataframe = self.get_initial_klines()
+        self.params = {"symbol": symbol,
+                       "limit": str(limit),
+                       "interval": timeframe}
+        self.dataframe = self.get_klines(start_date, end_date)
+
+    original_timezone = timezone('UTC')
+    target_timezone = timezone('US/Eastern')
+
+    def get_klines(self, start_date, end_date):
+        if start_date is None:
+            data = self.get_initial_klines()
+        elif end_date is None:
+            start_timestamp = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp()) * 1000
+            self.params['startTime'] = start_timestamp
+            data = self.get_initial_klines()
+        elif start_date is not None and end_date is not None:
+            data = self.get_unlimited_klines(start_date, end_date)
+        else:
+            raise Exception(f'Start and/or End dates are incorrect: Start: {start_date}; End:{end_date}')
+        #  print(data.to_string())
+        return data
 
     def get_initial_klines(self):
-        x = requests.get(
-            f'{self.api_url}/api/v3/klines?symbol={self.symbol}&limit={self.limit}&interval={self.timeframe}')
-        self.dataframe = pd.DataFrame(x.json())
-        self.dataframe.drop([6, 7, 8, 9, 10, 11], axis=1, inplace=True)
-        self.dataframe.rename(columns={0: 'timestamp',
-                                       1: 'open',
-                                       2: 'high',
-                                       3: 'low',
-                                       4: 'close',
-                                       5: 'volume'}, inplace=True)
-        self.dataframe['timestamp'] = pd.to_datetime(self.dataframe['timestamp'] // 1000, unit='s')
-        self.dataframe = self.dataframe.astype({'open': 'float64',
-                                                'high': 'float64',
-                                                'low': 'float64',
-                                                'close': 'float64',
-                                                'volume': 'float64'})
-        return self.dataframe
+        x = requests.get(f'{self.api_url}/api/v3/klines', params=self.params)
+        dataframe = pd.DataFrame(x.json())
+        dataframe.drop([6, 7, 8, 9, 10, 11], axis=1, inplace=True)
+        dataframe.rename(columns={0: 'Timestamp',
+                                  1: 'Open',
+                                  2: 'High',
+                                  3: 'Low',
+                                  4: 'Close',
+                                  5: 'Volume'}, inplace=True)
+        dataframe['Timestamp'] = pd.to_datetime(dataframe['Timestamp'] // 1000, unit='s')
+        # convert to Eastern Time
+        dataframe['Timestamp'] = dataframe['Timestamp'].dt.tz_localize(
+            self.original_timezone).dt.tz_convert(self.target_timezone)
+        dataframe = dataframe.astype({'Open': 'float64',
+                                      'High': 'float64',
+                                      'Low': 'float64',
+                                      'Close': 'float64',
+                                      'Volume': 'float64'})
+        return dataframe
 
-    # process websocket data and append it to the end of initial-data dataframe
+    def get_unlimited_klines(self, start_date, end_date):
+        dataframe = pd.DataFrame()
+        start_timestamp = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp() * 1000)
+        end_timestamp = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp() * 1000)
+
+        interval_mapping = {
+            '1m': timedelta(minutes=1),
+            '3m': timedelta(minutes=3),
+            '5m': timedelta(minutes=5),
+            '15m': timedelta(minutes=15),
+            '30m': timedelta(minutes=30),
+            '1h': timedelta(hours=1),
+            '2h': timedelta(hours=2),
+            '4h': timedelta(hours=4),
+            '6h': timedelta(hours=6),
+            '8h': timedelta(hours=8),
+            '12h': timedelta(hours=12),
+            '1d': timedelta(days=1),
+            '3d': timedelta(days=3),
+            '1w': timedelta(weeks=1),
+            '1M': timedelta(days=30)
+        }
+
+        interval_delta = interval_mapping.get(self.params['interval'])
+
+        while start_timestamp < end_timestamp:
+            self.params['startTime'] = start_timestamp
+            temp_dataframe = self.get_initial_klines()
+            if temp_dataframe.empty:
+                break
+
+            last_timestamp = temp_dataframe.iloc[-1, 0]
+            start_timestamp = int((last_timestamp.to_pydatetime() + interval_delta).timestamp() * 1000)
+
+            dataframe = pd.concat([dataframe, temp_dataframe], ignore_index=True)
+
+        return dataframe
+
+    #  process websocket data and append it to the end of initial-data dataframe
     def on_message(self, ws, message):
         j = json.loads(message)['k']
         if j['x']:
             temp_df = pd.DataFrame([[j['T'], j['o'], j['h'], j['l'], j['c'], j['v']]],
-                                   columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            temp_df['timestamp'] = pd.to_datetime(j['T'] // 1000, unit='s')
-            temp_df = temp_df.astype({'open': 'float64',
-                                      'high': 'float64',
-                                      'low': 'float64',
-                                      'close': 'float64',
-                                      'volume': 'float64'})
-            self.dataframe.drop(index=self.dataframe.index[0],
-                                axis=0,
-                                inplace=True)
+                                   columns=['Timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'])
+            temp_df['Timestamp'] = pd.to_datetime(j['T'] // 1000, unit='s')
+            # convert Timestamp to Your Timezone
+            temp_df['Timestamp'] = temp_df['Timestamp'].dt.tz_localize(
+                self.original_timezone).dt.tz_convert(self.target_timezone)
+            temp_df = temp_df.astype({'Open': 'float64',
+                                      'High': 'float64',
+                                      'Low': 'float64',
+                                      'Close': 'float64',
+                                      'Volume': 'float64'})
+            self.dataframe.drop(index=self.dataframe.index[0], axis=0, inplace=True)
             self.dataframe = pd.concat([self.dataframe, temp_df], sort=False, ignore_index=True)
             self.dataframe.reset_index(drop=True)
 
@@ -64,7 +128,7 @@ class Binance:
     # receive real-time updates from websocket
     def receive_stream_data(self):
         socket = f'wss://stream.binance.us:9443/ws/{self.symbol.lower()}@kline_{self.timeframe}'
-        ws = websocket.WebSocketApp(socket, on_message=self.on_message, on_close=self.on_close)
+        ws = WebSocketApp(socket, on_message=self.on_message, on_close=self.on_close)
         ws.run_forever()
 
     def start_stream(self):
@@ -72,10 +136,10 @@ class Binance:
 
     # get binance.us signature
     def get_binance_signature(self, data, secret):
-        postdata = urllib.parse.urlencode(data)
+        postdata = parse.urlencode(data)
         message = postdata.encode()
         byte_key = bytes(secret, 'UTF-8')
-        mac = hmac.new(byte_key, message, hashlib.sha256).hexdigest()
+        mac = hmac.new(byte_key, message, sha256).hexdigest()
         return mac
 
     # Attaches auth headers and returns results of a POST request
@@ -92,7 +156,7 @@ class Binance:
     def get_all_open_orders(self):
         uri_path = '/api/v3/openOrders'
         data = {
-            "timestamp": int(round(time.time() * 1000))
+            "timestamp": int(round(time() * 1000))
         }
         return self.binance_request(data, uri_path)
 
@@ -104,7 +168,7 @@ class Binance:
     def get_all_orders(self):
         uri_path = "/api/v3/allOrders"
         data = {
-            "timestamp": int(round(time.time() * 1000)),
+            "timestamp": int(round(time() * 1000)),
             "symbol": self.symbol
         }
         return self.binance_request(data, uri_path)
@@ -116,7 +180,7 @@ class Binance:
             "side": side,
             "type": type,
             "quantity": quantity,
-            "timestamp": int(round(time.time() * 1000))
+            "timestamp": int(round(time() * 1000))
         }
         return self.binance_request(data, uri_path)
 
@@ -127,18 +191,19 @@ class Binance:
             "side": side,
             "type": type,
             "quantity": quantity,
-            "timestamp": int(round(time.time() * 1000))
+            "timestamp": int(round(time() * 1000))
         }
         return self.binance_request(data, uri_path)
+
 
 
 """
 SYMBOL = 'ETHUSDT'
 LIMIT = '100'
-TIMEFRAME = '5m'
+TIMEFRAME = '1m'
 eth = Binance(SYMBOL, TIMEFRAME, LIMIT)
-result = eth.test_new_order('SELL', 'MARKET', 0.01)
-#result = eth.get_all_open_orders()
-print(result)
-
+eth.start_stream()
+# result = eth.test_new_order('SELL', 'MARKET', 0.01)
+# result = eth.get_all_open_orders()
+# print(result)
 """
