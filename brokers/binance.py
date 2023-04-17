@@ -14,7 +14,7 @@ import config
 
 
 class Binance:
-    def __init__(self, symbol, timeframe, limit=None, start_date=None, end_date=None):
+    def __init__(self, symbol, timeframe, limit, start_date=None, end_date=None):
         self.symbol = symbol
         self.timeframe = timeframe
         self.limit = str(limit)
@@ -40,7 +40,6 @@ class Binance:
             data = self.get_unlimited_klines(start_date, end_date)
         else:
             raise Exception(f'Start and/or End dates are incorrect: Start: {start_date}; End:{end_date}')
-        #  print(data.to_string())
         return data
 
     def get_initial_klines(self):
@@ -173,7 +172,29 @@ class Binance:
         }
         return self.binance_request(data, uri_path)
 
-    def new_order(self, side, type, quantity):
+    def create_new_order(self, side, type, quantity):
+        """
+        Create a new order on the Binance trading platform.
+
+        Args:
+            side (str): Order side, which can be 'BUY' or 'SELL'.
+            type (str): Order type, which can be one of the following:
+                        'LIMIT', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT', 'LIMIT_MAKER'.
+            quantity (float): Quantity of the trading asset to buy or sell.
+
+        Returns:
+            dict: Response from the Binance API.
+
+        Parameters:
+            symbol (str): Order trading pair, e.g., 'BTCUSD', 'ETHUSD'.
+            side (str): Order side, e.g., 'BUY', 'SELL'.
+            type (str): Order type, e.g., 'LIMIT', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT', 'LIMIT_MAKER'.
+            timeInForce (str, optional): Time in force for the order (e.g., 'GTC', 'IOC', 'FOK'). Not used in this implementation.
+            quantity (float, optional): Quantity of the trading asset to buy or sell.
+            quoteOrderQty (float, optional): Quote order quantity. Not used in this implementation.
+            price (float, optional): Order price. Not used in this implementation.
+
+        """
         uri_path = "/api/v3/order"
         data = {
             "symbol": self.symbol,
@@ -182,6 +203,18 @@ class Binance:
             "quantity": quantity,
             "timestamp": int(round(time() * 1000))
         }
+        return self.binance_request(data, uri_path)
+
+    def open_position(self, param):
+        uri_path = "/api/v3/order"
+        data = {
+            "symbol": self.symbol,
+            "side": None,
+            "type": None,
+            "quantity": None,
+            "timestamp": int(round(time() * 1000))
+        }
+        data |= param
         return self.binance_request(data, uri_path)
 
     def test_new_order(self, side, type, quantity):
@@ -195,15 +228,30 @@ class Binance:
         }
         return self.binance_request(data, uri_path)
 
-
+    def open_position_test(self, param):
+        uri_path = "/api/v3/order/test"
+        data = {
+            "symbol": self.symbol,
+            "side": None,
+            "type": None,
+            "quantity": None,
+            "timestamp": int(round(time() * 1000))
+        }
+        data |= param
+        response = self.binance_request(data, uri_path)
+        if response == '{}':
+            return "Test Position Posted"
+        else:
+            return response
 
 """
-SYMBOL = 'ETHUSDT'
-LIMIT = '100'
+SYMBOL = 'SHIBUSDT'
+LIMIT = '5'
 TIMEFRAME = '1m'
 eth = Binance(SYMBOL, TIMEFRAME, LIMIT)
-eth.start_stream()
-# result = eth.test_new_order('SELL', 'MARKET', 0.01)
+#eth.start_stream()
+param = {"side": "BUY", "type": "MARKET", "quantity": 90000}
+result = eth.open_position(param)
 # result = eth.get_all_open_orders()
-# print(result)
+print(result)
 """
