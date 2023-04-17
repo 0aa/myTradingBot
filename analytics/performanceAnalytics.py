@@ -8,6 +8,7 @@ class TradeAnalysis:
 
     def modify_df(self):
         self.df.loc[(self.df['Signal'] == 'CLOSE'), 'Max Invest'] = self.df['Amount'] * self.df['Price']
+        self.df.fillna(value=np.nan, inplace=True)
 
     def num_trades(self):
         return len(self.df)
@@ -72,18 +73,16 @@ class TradeAnalysis:
         daily_returns = self.df['Close Profit'].pct_change().dropna()
         return daily_returns.std()
 
-    def max_drawdown(self):
+    def calculate_drawdown(self):
         if len(self.df) == 0:
             return 0
-        # Calculate the cumulative returns
-        cumulative_returns = (1 + self.df['Close Profit'].pct_change()).cumprod()
-        # Calculate the running maximum cumulative return
-        running_max = cumulative_returns.expanding().max()
-        # Calculate drawdowns
-        drawdowns = 1 - (cumulative_returns / running_max)
-        # Find the maximum drawdown
-        max_drawdown = drawdowns.max()
-        return max_drawdown
+
+        # Calculate the cumulative maximum of the "Total Profit" column
+        cum_max = self.df['Total Profit'].cummax()
+
+        # Set the drawdown to NaN where the cumulative maximum is zero
+        drawdown = (self.df['Total Profit'] - cum_max) / np.where(cum_max == 0, np.nan, cum_max)
+        return drawdown.min() * 100
 
     def report(self):
         return (
@@ -94,10 +93,10 @@ class TradeAnalysis:
             f"Total Profit Loss: {round(self.total_profit_loss(),2)} USD\n"
             f"Win/Loss Ratio: {self.win_loss_ratio()}\n"
             f"Average Holding Period: {self.average_holding_period()}\n"
-            f"Rotal Return: {round(self.total_return(initial_capital=5000) * 100, 2)}%\n"
+            f"Total Return: {round(self.total_return(initial_capital=5000) * 100, 2)}%\n"
             f"Annualized Return: {round(self.annualized_return(initial_capital=5000, num_days=365) * 100, 2)}%\n"
-            f"Sharpe Ratio: {round(self.sharpe_ratio(risk_free_rate=0), 3)} => {self.sharpe_ratio_meaning()}\n"
-            f"Max Drawdown: {round(self.max_drawdown(), 2)}%\n"
-            f"Avg Daily Return: {round(self.avg_daily_return(), 2)}\n"
+            f"Sharpe Ratio: {round(self.sharpe_ratio(risk_free_rate=0.04), 3)} => {self.sharpe_ratio_meaning()}\n"
+            f"Max Drawdown: {round(self.calculate_drawdown(), 2)}%\n"
+            f"Avg Daily Return: {round(self.avg_daily_return(), 2)}%\n"
             f"Avg Daily Volatility: {round(self.avg_daily_volatility(), 2)}"
         )
