@@ -10,9 +10,7 @@ class TelegramBot:
         self.url = f"https://api.telegram.org/bot{config.BOT_API_TOKEN}/"
         self.chat_id = config.CHAT_ID
 
-
-
-    def get_all_updates(self):  # получаем все сообщения полученные ботом за последние сутки
+    def get_all_updates(self):  # receive all the messages for the last 24h
         response = requests.get(self.url + 'getUpdates')
         print(response.json())
         return response.json()
