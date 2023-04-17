@@ -24,7 +24,7 @@ class Trades:
         self.root = get_project_root()
         self.file_name = f'{self.symbol}_{self.timeframe}_{self.limit}.csv'
         self.file_path = self.root / f'storage/{self.file_name}'
-        self.create_csvfile()
+        # self.create_csvfile()
 
     def create_csvfile(self):
         try:
