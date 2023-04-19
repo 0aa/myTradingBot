@@ -76,11 +76,16 @@ class Backtest:
 def backtest_strategy(obj, simulation_type='live', strategy=ChannelSlope):
     # Pass the DataStream obj to the strategy class
     apply_strategy = strategy(obj)
-    apply_strategy.set_custom_vals()
+    # set random custom values of the strategy
+    params = [-15, 22, 0.35, 0.32, 0, 6, 10]
+    #apply_strategy.set_custom_vals_opt(params)
     # Pass strategy to backtest
     apply_backtest = Backtest(apply_strategy)
-    vals = [15000, 1, 0.985, 1.1, 5, 5, 5]
-    apply_backtest.set_custom_params(vals)
+    # set random custom values of the money/pos management
+    # optimized: [15000, 3, 0.985, 1.1, 5, 1, 1]
+    # prod test: [220, 1, 0.985, 1.1, 0.1, 0.1, 0.1]
+    vals = [200, 2, 0.985, 1.1, 0.05, 0.02, 0.1]
+    #apply_backtest.set_custom_params(vals)
 
     # Run the backtest with the appropriate method
     apply_backtest.run_live_simulation()
@@ -95,13 +100,13 @@ def backtest_strategy(obj, simulation_type='live', strategy=ChannelSlope):
 
 @time_it
 def main():
-    SYMBOL = 'ETHUSDT'
-    LIMIT = '100'
-    TIMEFRAME = '30m'
+    SYMBOL = 'ETHUSD'
+    LIMIT = '1000'
+    TIMEFRAME = '1h'
     # time YYYY,M,D
 
-    START_TIME = '2023-4-5'
-    END_TIME = '2023-4-15'  # optional
+    START_TIME = '2023-1-1'
+    END_TIME = '2023-4-18'  # optional
 
     eth_test = Binance(SYMBOL, TIMEFRAME, LIMIT, START_TIME, END_TIME)
     backtest_strategy(eth_test, 'live')

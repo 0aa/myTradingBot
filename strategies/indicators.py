@@ -1,13 +1,16 @@
 """
 indicators that are not available in any lib will be stored there
 """
+from datetime import datetime
+
 import pandas as pd
 import statsmodels.api as sm
 import numpy as np
 from finta import TA
 
-
 from scipy.stats import linregress
+
+from playground.tradingzone import Tradingzone
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -16,21 +19,20 @@ class Indicators:
 
     @staticmethod
     def local_min_max(df):
-        df['loc_min'] = df.close[(df.close.shift(1) > df.close) & (df.close.shift(-1) > df.close)]
-        df['loc_max'] = df.close[(df.close.shift(1) < df.close) & (df.close.shift(-1) < df.close)]
+        df['loc_min'] = df.Close[(df.Close.shift(1) > df.Close) & (df.Close.shift(-1) > df.Close)]
+        df['loc_max'] = df.Close[(df.Close.shift(1) < df.Close) & (df.Close.shift(-1) < df.Close)]
         return df
 
     @staticmethod
     def local_min_max_gpt(df):
-        df['loc_min'] = df.close[(df.close.shift(1) > df.close) & (df.close.shift(-1) > df.close)]
-        df['loc_max'] = df.close[(df.close.shift(1) < df.close) & (df.close.shift(-1) < df.close)]
+        df['loc_min'] = df.Close[(df.Close.shift(1) > df.Close) & (df.Close.shift(-1) > df.Close)]
+        df['loc_max'] = df.Close[(df.Close.shift(1) < df.Close) & (df.Close.shift(-1) < df.Close)]
         # Handle the last candle separately
-        if df.close.iloc[-1] > df.close.iloc[-2]:
-            df.loc[df.index[-1], 'loc_max'] = df.close.iloc[-1]
-        elif df.close.iloc[-1] < df.close.iloc[-2]:
-            df.loc[df.index[-1], 'loc_min'] = df.close.iloc[-1]
+        if df.Close.iloc[-1] > df.Close.iloc[-2]:
+            df.loc[df.index[-1], 'loc_max'] = df.Close.iloc[-1]
+        elif df.Close.iloc[-1] < df.Close.iloc[-2]:
+            df.loc[df.index[-1], 'loc_min'] = df.Close.iloc[-1]
         return df
-
 
     # To find a slope of price line
     # series - dataframe 'close' indSlope(df['close'],5)
@@ -100,72 +102,82 @@ class Indicators:
     def prepareDF(cls, df, atr_period: int = 14, maxmin_period: int = 10,
                   slope_period: int = 5):  # <====try to optimize
         df = cls.local_min_max(df)
-        df['ATR'] = TA.ATR(df, atr_period)  # <====try to optimize
-        df['slope'] = cls.indSlope(df['close'], slope_period)  # <====try to optimize
-        df['ch_max'] = df['high'].rolling(maxmin_period).max()  # <====try to optimize
-        df['ch_min'] = df['low'].rolling(maxmin_period).min()  # <====try to optimize
-        df['pos_in_ch'] = (df['close'] - df['ch_min']) / (df['ch_max'] - df['ch_min'])
+        df['slope'] = cls.indSlope(df['Close'], slope_period)  # <====try to optimize
+        df['ch_max'] = df['High'].rolling(maxmin_period).max()  # <====try to optimize
+        df['ch_min'] = df['Low'].rolling(maxmin_period).min()  # <====try to optimize
+        df['pos_in_ch'] = (df['Close'] - df['ch_min']) / (df['ch_max'] - df['ch_min'])
+        df['rsi'] = cls.calculate_rsi(df['Close'], slope_period)
         df = df.reset_index()
         return df
 
-    @classmethod
-    def prepareDF_gpt(cls, df, atr_period: int = 14, maxmin_period: int = 10,
-                  slope_period: int = 5):  # <====try to optimize
-        df = cls.local_min_max_gpt(df)
-        df['ATR'] = TA.ATR(df, atr_period)  # <====try to optimize
-        df['slope'] = cls.indSlope_gpt(df['close'], slope_period)  # <====try to optimize
-        #df = cls.linear_regression_channel(df, maxmin_period)
+    @staticmethod
+    def aroon_indicator(data, lookback_period: int = 14):
+        # Calculate the Aroon Up and Aroon Down
+        aroon_up = 100 * (
+                    lookback_period - data['High'].rolling(window=lookback_period).apply(np.argmax)) / lookback_period
+        aroon_down = 100 * (
+                    lookback_period - data['Low'].rolling(window=lookback_period).apply(np.argmin)) / lookback_period
 
-        df['ch_max'] = df['high'].rolling(maxmin_period).max()  # <====try to optimize
-        df['ch_min'] = df['low'].rolling(maxmin_period).min()  # <====try to optimize
-
-        df['pos_in_ch'] = (df['close'] - df['ch_min']) / (df['ch_max'] - df['ch_min'])
-        df['rsi'] = cls.calculate_rsi(df['close'], slope_period)
-        df = df.reset_index()
-
-        return df
-
-    @classmethod
-    def linear_regression_channel(cls, data, window):
-        # check if data and window parameters are valid
-        if not isinstance(data, pd.DataFrame):
-            raise TypeError("The 'data' parameter must be a pandas DataFrame.")
-        if not isinstance(window, int) or window < 1:
-            raise ValueError("The 'window' parameter must be a positive integer.")
-
-        # check if the data has enough rows for the window size
-        if len(data) < window:
-            raise ValueError("The 'data' parameter has fewer rows than the window size.")
-
-        # drop any rows with missing or invalid data
-        data = data.dropna()
-
-        # calculate the x values for the regression line
-        x = np.arange(window)
-
-        # loop through each window in the data and calculate the channel values
-        upper_channel_values = []
-        lower_channel_values = []
-        for i in range(len(data) - window + 1):
-            y = data['close'][i:i + window].values
-            slope, intercept, _, _, _ = linregress(x, y)
-            regression_line = slope * x + intercept
-
-            upper_channel = regression_line + (data['high'][i:i + window] - regression_line).max()
-            lower_channel = regression_line - (regression_line - data['low'][i:i + window]).max()
-
-            upper_channel_values.append(upper_channel[-1])
-            lower_channel_values.append(lower_channel[-1])
-
-        # create Series from channel values with explicit float64 dtype
-        upper_channel_series = pd.Series(upper_channel_values, dtype=np.float64, index=data.index[window - 1:])
-        lower_channel_series = pd.Series(lower_channel_values, dtype=np.float64, index=data.index[window - 1:])
-
-        # add the channel values to the data DataFrame
-        data['ch_max'] = upper_channel_series
-        data['ch_min'] = lower_channel_series
+        # Add Aroon Up and Aroon Down to the data DataFrame
+        data['Aroon_Up'] = aroon_up
+        data['Aroon_Down'] = aroon_down
 
         return data
+
+    @staticmethod
+    def parabolic_sar_daily(df):
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+        df = df.set_index('Timestamp')
+
+        # Resample the dataframe to daily data
+        daily_df = df.resample('1D').agg({'High': 'max', 'Low': 'min', 'Open': 'first', 'Close': 'last', 'Volume': 'sum'})
+
+        # Calculate the Parabolic SAR for the daily data
+        daily_df['Parabolic_SAR_daily'] = TA.SAR(daily_df)
+
+        # Drop the NaN values
+        daily_df = daily_df.dropna()
+
+        # Create a temporary dataframe with only the date (without time) and the Parabolic SAR value
+        temp_df = daily_df[['Parabolic_SAR_daily']].copy()
+        temp_df.index = temp_df.index.normalize()  # Normalize the index to only have the date
+
+        # Merge the daily Parabolic SAR values back to the 30-minute dataframe
+        df = df.merge(temp_df, left_on=df.index.normalize(), right_index=True, how='left')
+
+        # Rename the merged column to 'Daily_Parabolic_SAR'
+        df = df.reset_index()
+        return df
+
+
+    @classmethod
+    def prepareDF_gpt(cls, df, rsi_period: int = 14, maxmin_period: int = 10,
+                      slope_period: int = 5):  # <====try to optimize
+
+        df = df.reset_index()
+        df = cls.parabolic_sar_daily(df)
+        df = cls.aroon_indicator(df)
+        df = cls.local_min_max_gpt(df)
+
+        df['Parabolic_SAR'] = TA.SAR(df)
+
+        df['slope'] = cls.indSlope_gpt(df['Close'], slope_period)  # <====try to optimize
+        df['ch_max'] = df['High'].rolling(maxmin_period).max()  # <====try to optimize
+        df['ch_min'] = df['Low'].rolling(maxmin_period).min()  # <====try to optimize
+
+        df['pos_in_ch'] = (df['Close'] - df['ch_min']) / (df['ch_max'] - df['ch_min'])
+
+        df['slow_ma'] = TA.SMA(df, 20)
+        df['fast_ma'] = TA.SMA(df, 50)
+        df['MA_diff'] = df['fast_ma'] - df['slow_ma']
+
+        df['MACD_per'] = df['MA_diff'] / df['Close']
+
+        df = df.drop(columns=['slow_ma', 'fast_ma', 'ch_min', 'ch_max', 'MA_diff'])
+        return df
+
+
+
 
 '''
 price_data = pd.Series([103, 104, 106, 107, 109])
@@ -189,7 +201,3 @@ slope = calculate_slope(price_data, n)
 print("gpt simple:", slope)
 
 '''
-
-
-
-

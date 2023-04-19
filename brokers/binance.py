@@ -63,6 +63,16 @@ class Binance:
                                       'Volume': 'float64'})
         return dataframe
 
+    def get_multiple_dataframes(self, start_date, end_date):
+        df_5m = self.get_unlimited_klines(start_date, end_date)
+        df_5m['Timestamp'] = pd.to_datetime(df_5m['Timestamp'])
+        df_5m = df_5m.set_index('Timestamp')
+        df_30m = df_5m.resample('30min').agg(
+            {'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'})
+        df_5m = df_5m.reset_index()
+        df_30m = df_30m.reset_index()
+        return df_5m, df_30m
+
     def get_unlimited_klines(self, start_date, end_date):
         dataframe = pd.DataFrame()
         start_timestamp = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp() * 1000)
@@ -172,7 +182,7 @@ class Binance:
         }
         return self.binance_request(data, uri_path)
 
-    def create_new_order(self, side, type, quantity):
+    def open_position(self, param):
         """
         Create a new order on the Binance trading platform.
 
@@ -198,34 +208,13 @@ class Binance:
         uri_path = "/api/v3/order"
         data = {
             "symbol": self.symbol,
-            "side": side,
-            "type": type,
-            "quantity": quantity,
-            "timestamp": int(round(time() * 1000))
-        }
-        return self.binance_request(data, uri_path)
-
-    def open_position(self, param):
-        uri_path = "/api/v3/order"
-        data = {
-            "symbol": self.symbol,
             "side": None,
             "type": None,
             "quantity": None,
+            "timeInForce": "GTC",
             "timestamp": int(round(time() * 1000))
         }
         data |= param
-        return self.binance_request(data, uri_path)
-
-    def test_new_order(self, side, type, quantity):
-        uri_path = "/api/v3/order/test"
-        data = {
-            "symbol": self.symbol,
-            "side": side,
-            "type": type,
-            "quantity": quantity,
-            "timestamp": int(round(time() * 1000))
-        }
         return self.binance_request(data, uri_path)
 
     def open_position_test(self, param):
@@ -235,6 +224,7 @@ class Binance:
             "side": None,
             "type": None,
             "quantity": None,
+            "timeInForce": "GTC",
             "timestamp": int(round(time() * 1000))
         }
         data |= param
@@ -244,14 +234,52 @@ class Binance:
         else:
             return response
 
+
 """
-SYMBOL = 'SHIBUSDT'
-LIMIT = '5'
-TIMEFRAME = '1m'
+SYMBOL = 'ETHUSD'
+LIMIT = '50'
+TIMEFRAME = '5m'
+START_TIME = '2023-4-16'
+END_TIME = '2023-4-17'  # optional
 eth = Binance(SYMBOL, TIMEFRAME, LIMIT)
-#eth.start_stream()
-param = {"side": "BUY", "type": "MARKET", "quantity": 90000}
-result = eth.open_position(param)
-# result = eth.get_all_open_orders()
-print(result)
+
+current_price = 2079
+stop_loss_price = current_price * 0.985
+stop_loss_price_limit = current_price * 0.99
+quantity = 0.001  # Adjust the quantity as needed
+
+response = eth.open_position()
+print(response)
+
+
+df_5m, df_30m = eth.get_multiple_dataframes(START_TIME, END_TIME)
+def get_five_min_slice(df_5m, df_30m):
+    df_5m = df_5m.set_index('Timestamp')
+    df_30m = df_30m.set_index('Timestamp')
+    last_row_timestamp = df_30m.iloc[-1].name
+    second_last_row_timestamp = df_30m.iloc[-2].name
+    sliced_df = df_5m[(df_5m.index >= second_last_row_timestamp) & (df_5m.index <= last_row_timestamp)]
+    sliced_df = sliced_df.iloc[1:-1]
+    sliced_df = sliced_df.reset_index()
+    return sliced_df
+
+
+def get_corresponding_interval(df_5m, df_30m):
+    source_df = df_30m
+    destination_df = pd.DataFrame(columns=source_df.columns)
+    max_rows = 30
+
+    for i, row in source_df.iterrows():
+        destination_df = pd.concat([destination_df, row.to_frame().T], ignore_index=False)
+        if len(destination_df) > 1:
+            slice = get_five_min_slice(df_5m, df_30m)
+            print(slice)
+        if len(destination_df) > max_rows:
+            destination_df = destination_df.iloc[1:]
+        if len(destination_df) == max_rows:
+            print("heh")
+
+
+get_corresponding_interval(df_5m, df_30m)
+
 """

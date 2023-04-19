@@ -16,7 +16,7 @@ class TradingBot:
         self.default_strategy = ChannelSlope
         self.strategy = self.set_strategy(self.default_strategy)
         self.PM = PositionManagement(self.strategy)
-        self.PM.rg_switch = True
+        self.PM.tg_switch = True
 
         self.tg_bot = self.PM.tg_bot
 
@@ -52,28 +52,32 @@ class TradingBot:
                 time.sleep(50)
 
     def run_bot_prod(self):
-        self.initial_message("PROD RUN")
+        self.initial_message("PRODUCTION RUN")
         old_dataframe = deepcopy(self.broker.dataframe)
         while True:
             if old_dataframe.equals(self.broker.dataframe):
                 time.sleep(10)
             else:
                 old_dataframe = deepcopy(self.broker.dataframe)
-                signal = self.PM.apply_strategy(old_dataframe)
-                if signal:
+                payloads = self.PM.apply_strategy(old_dataframe)
+                print(payloads)
+                if payloads:
                     try:
-                        result = self.broker.open_position(signal)
-                        self.tg_bot.send_message(f"Position posted: {result}")
+                        for payload in payloads:
+                            result = self.broker.open_position(payload)
+                            self.tg_bot.send_message(f"Position posted: {result}")
+                            time.sleep(0.2)
                     except Exception as e:
                         print(f"Error while opening position: {e}")
                         self.tg_bot.send_message(f"Error while opening position: {e}")
 
                 time.sleep(50)
 
+
 def main():
     """config file needs to be created with the api keys/tokens"""
-    SYMBOL = 'ETHUSDT'
-    TIMEFRAME = '1m'
+    SYMBOL = 'ETHUSD'
+    TIMEFRAME = '1h'
     LIMIT = '100'  # number of beginning candles
     # START_DATE = '2023-4-1'   # time format 'YYYY-M-D'
     # END_DATE = '2023-4-15'    # optional
@@ -82,7 +86,7 @@ def main():
     eth = TradingBot(SYMBOL, TIMEFRAME, LIMIT)
 
     t = Thread(name='receive stream', target=eth.start_stream)
-    w = Thread(name='run the bot', target=eth.run_bot_test)
+    w = Thread(name='run the bot', target=eth.run_bot_prod)
     #  w = Thread(name='run the bot', target=eth.run_bot_test, args=(eth,))
     t.start()
     w.start()
