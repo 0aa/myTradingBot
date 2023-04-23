@@ -1,4 +1,4 @@
-from copy import copy
+from copy import deepcopy
 
 import pandas as pd
 from strategies.indicators import Indicators as Ind
@@ -49,8 +49,8 @@ class ChannelSlope:
     def prepare_live_df(self, dataframe):
         return Ind.prepareDF_gpt(dataframe, self.rsi_period, self.maxmin_period, self.slope_period)
 
-    def prepare_static_df(self, dataframe):
-        dataframe = copy(dataframe)
+    def prepare_static_df(self):
+        dataframe = deepcopy(self.dataframe)
         return Ind.prepareDF_gpt(dataframe, self.rsi_period, self.maxmin_period, self.slope_period)
 
     # find trades in the prepared dataframe
@@ -71,7 +71,7 @@ class ChannelSlope:
 
         return prepared_df
 
-    def run(self, dataframe=pd.Series(dtype='int64')):
-        prepared_df = self.prepare_live_df(dataframe) if not dataframe.empty else self.prepare_static_df(self.dataframe)
-        #print(self.find_trades(prepared_df).tail(1).to_string(header=True))
-        return self.find_trades(prepared_df)['Trade'].iloc[-1]
+    def run(self, df=pd.Series(dtype='int64')):
+        prepared_dataframe = self.prepare_live_df(df) if not df.empty else self.prepare_static_df()
+        print(self.find_trades(prepared_dataframe).tail(1).to_string(header=True))
+        return self.find_trades(prepared_dataframe)['Trade'].iloc[-1]
