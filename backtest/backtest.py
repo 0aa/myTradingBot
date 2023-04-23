@@ -2,9 +2,9 @@ import pandas as pd
 
 from brokers.binance import Binance
 from analytics.performanceAnalytics import TradeAnalysis
-from playground.positionManagement import PositionManagement
+from utils.positionManagement import PositionManagement
 from strategies.channelSlope import ChannelSlope
-from strategies.vamo import Vamo
+from strategies.ripsterClouds import ripsterClouds
 from utils.utils import time_it
 
 '''
@@ -101,15 +101,15 @@ def backtest_strategy(obj, simulation_type='live', strategy=ChannelSlope):
 @time_it
 def main():
     SYMBOL = 'ETHUSD'
-    LIMIT = '1000'
+    LIMIT = '100'
     TIMEFRAME = '1h'
     # time YYYY,M,D
 
-    START_TIME = '2023-1-1'
-    END_TIME = '2023-4-18'  # optional
+    START_TIME = '2023-4-1'
+    END_TIME = '2023-4-20'  # optional
 
     eth_test = Binance(SYMBOL, TIMEFRAME, LIMIT, START_TIME, END_TIME)
-    backtest_strategy(eth_test, 'live')
+    backtest_strategy(eth_test, 'live', strategy=ripsterClouds)
 
     return
 
