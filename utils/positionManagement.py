@@ -16,7 +16,7 @@ class PositionManagement:
         self.max_amount = 200
         self.max_positions = 2  # maximum number of positions that can be open simultaneously
         self.stop_loss = 0.985  # coefficient for stop loss price
-        self.take_profit = 1.1
+        self.take_profit = 1.05
         self.lot_one = 0.05
         self.lot_two = 0.02
         self.lot_three = 0.01
@@ -29,7 +29,10 @@ class PositionManagement:
     def introduction(self):
         text = (f"Max Investments: {self.max_amount}"
                 f"\nMax Positions: {self.max_positions}"
-                f"\nStrategy: {self.strategy.__class__.__name__}")
+                f"\nStrategy: {self.strategy.__class__.__name__}"
+                f"\nLot one: {self.lot_one}"
+                f"\nLot two: {self.lot_two}"
+                f"\nLot three: {self.lot_three}")
         self.tg_switch and self.tg_bot.send_message(text)
 
     def apply_strategy(self, destination_df):
@@ -42,8 +45,9 @@ class PositionManagement:
                 average_price = self.average_price_of_open_positions(current_price)
 
                 # check if stop loss
-                if self.is_stop_loss_or_take_profit(current_price, average_price):
-                    signal = "STOP LOSS"
+                loss_profit_signal = self.is_stop_loss_or_take_profit(current_price, average_price)
+                if loss_profit_signal:
+                    signal = loss_profit_signal
 
                 if signal == 'BUY' and len(self.positions) < self.max_positions:
                     return self.handle_buy_signal(signal, current_price, current_time)
@@ -61,10 +65,10 @@ class PositionManagement:
             self.positions.append((buy_quantity, current_price))
             self.record_statistics(signal, current_time, current_price, buy_quantity)
 
-            buy_payload = self.buy_sell_market_payload(signal, buy_quantity)
+            buy_payload = self.buy_sell_market_payload("BUY", buy_quantity)
             stop_loss_payload = self.stop_loss_payload(current_price, buy_quantity)
 
-            return buy_payload, stop_loss_payload
+            return [buy_payload, stop_loss_payload]
 
     def handle_close_signal(self, signal, current_price, current_time):
         if len(self.positions) > 0:
@@ -72,9 +76,9 @@ class PositionManagement:
             self.positions = []
             self.record_statistics(signal, current_time, current_price, sell_quantity, close_profit)
             """return data required for API request to exchange"""
-            close_payload = self.buy_sell_market_payload(current_price, sell_quantity)
+            close_payload = self.buy_sell_market_payload("SELL", sell_quantity)
 
-            return close_payload
+            return [close_payload,]
 
     @staticmethod
     def get_current_price_and_time(destination_df):
@@ -91,8 +95,12 @@ class PositionManagement:
         return average_price
 
     def is_stop_loss_or_take_profit(self, current_price, average_price):
-        return (current_price / average_price < self.stop_loss or
-                current_price / average_price > self.take_profit)
+        if current_price / average_price < self.stop_loss:
+            return "STOP LOSS"
+        elif current_price / average_price > self.take_profit:
+            return "TAKE PROFIT"
+        else:
+            return None
 
     def record_statistics(self, signal, current_time, current_price, amount, close_profit=None):
         new_row = pd.DataFrame({'Timestamp': [current_time], 'Signal': [signal], 'Price': [current_price],
@@ -125,22 +133,13 @@ class PositionManagement:
             total_amount += buy_amount
         return close_profit, total_amount
 
-    #  stop_loss is used to set limit offer to sell below the current price if we have bought before
-    def stop_loss_payload(self, price, quantity):
-        return {
-            'side': 'SELL',
-            'type': 'STOP_LOSS_LIMIT',
-            'quantity': quantity,
-            'price': "{:.2f}".format(price * self.stop_loss),  # actual price for stop loss
-            'stopPrice': "{:.2f}".format(price * self.stop_order_activate_price)  # when it got activated
-        }
-
     #  set trailing stop loss within % from the current price
     #  currently that API call is not working
     def trailing_stop_loss_payload(self, quantity, price):
         return {
             'side': 'SELL',
             'type': 'STOP_LOSS_LIMIT',
+            "timeInForce": "GTC",
             'price': "{:.2f}".format(price * self.stop_loss),
             'stopPrice ': "{:.2f}".format(price * self.stop_order_activate_price),
             'quantity': quantity,
@@ -152,6 +151,7 @@ class PositionManagement:
         return {
             'side': 'BUY',
             'type': 'LIMIT',
+            "timeInForce": "GTC",
             'quantity': quantity,
             'price': "{:.2f}".format(price * self.stop_loss)
         }
@@ -162,4 +162,15 @@ class PositionManagement:
             "side": side,
             "type": "MARKET",
             "quantity": quantity
+        }
+
+    #  stop_loss is used to set limit offer to sell below the current price if we have bought before
+    def stop_loss_payload(self, price, quantity):
+        return {
+            'side': 'SELL',
+            'type': 'STOP_LOSS_LIMIT',
+            "timeInForce": "GTC",
+            'quantity': quantity,
+            'price': "{:.2f}".format(price * self.stop_loss),  # actual price for stop loss
+            'stopPrice': "{:.2f}".format(price * self.stop_order_activate_price)  # when it got activated
         }
