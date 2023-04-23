@@ -151,8 +151,8 @@ class Binance:
         mac = hmac.new(byte_key, message, sha256).hexdigest()
         return mac
 
-    # Attaches auth headers and returns results of a POST request
-    def binance_request(self, data, uri_path):
+    # POST: Attaches auth headers and returns results of a POST request
+    def binance_post_request(self, data, uri_path):
         headers = {'X-MBX-APIKEY': self.__api_key}
         signature = self.get_binance_signature(data, self.__api_sec)
         payload = {
@@ -162,12 +162,23 @@ class Binance:
         req = requests.post((self.api_url + uri_path), headers=headers, data=payload)
         return req.text
 
+    # DELETE: use for  deleting of existing orders
+    def binance_delete_request(self, data, uri_path):
+        headers = {'X-MBX-APIKEY': self.__api_key}
+        signature = self.get_binance_signature(data, self.__api_sec)
+        payload = {
+            **data,
+            "signature": signature,
+        }
+        req = requests.delete((self.api_url + uri_path), headers=headers, data=payload)
+        return req.text
+
     def get_all_open_orders(self):
         uri_path = '/api/v3/openOrders'
         data = {
             "timestamp": int(round(time() * 1000))
         }
-        return self.binance_request(data, uri_path)
+        return self.binance_post_request(data, uri_path)
 
     """
     Order type (e.g., LIMIT, MARKET, STOP_LOSS_LIMIT, TAKE_PROFIT_LIMIT, LIMIT_MAKER)
@@ -180,7 +191,7 @@ class Binance:
             "timestamp": int(round(time() * 1000)),
             "symbol": self.symbol
         }
-        return self.binance_request(data, uri_path)
+        return self.binance_post_request(data, uri_path)
 
     def open_position(self, param):
         """
@@ -211,11 +222,20 @@ class Binance:
             "side": None,
             "type": None,
             "quantity": None,
-            "timeInForce": "GTC",
             "timestamp": int(round(time() * 1000))
         }
         data |= param
-        return self.binance_request(data, uri_path)
+        return self.binance_post_request(data, uri_path)
+
+    def delete_existing_order(self, param):
+        uri_path = "/api/v3/order"
+        data = {
+            "orderId": None,
+            "symbol": self.symbol,
+            "timestamp": int(round(time() * 1000))
+        }
+        data |= param
+        return self.binance_delete_request(data, uri_path)
 
     def open_position_test(self, param):
         uri_path = "/api/v3/order/test"
@@ -224,16 +244,28 @@ class Binance:
             "side": None,
             "type": None,
             "quantity": None,
-            "timeInForce": "GTC",
             "timestamp": int(round(time() * 1000))
         }
         data |= param
-        response = self.binance_request(data, uri_path)
+        response = self.binance_post_request(data, uri_path)
         if response == '{}':
-            return "Test Position Posted"
+            return "TEST SUCCESS"
         else:
             return response
 
+    def delete_existing_order_test(self, param):
+        uri_path = "/api/v3/order/test"
+        data = {
+            "orderId": None,
+            "symbol": self.symbol,
+            "timestamp": int(round(time() * 1000))
+        }
+        data |= param
+        response = self.binance_delete_request(data, uri_path)
+        if response == '{}':
+            return "TEST SUCCESS"
+        else:
+            return response
 
 """
 SYMBOL = 'ETHUSD'
@@ -242,6 +274,39 @@ TIMEFRAME = '5m'
 START_TIME = '2023-4-16'
 END_TIME = '2023-4-17'  # optional
 eth = Binance(SYMBOL, TIMEFRAME, LIMIT)
+
+
+quantity=0.001
+payload_buy = {
+            "side": "BUY",
+            "type": "MARKET",
+            "quantity": quantity
+        }
+#result_buy = eth.open_position(payload_buy)
+#print("BUY:", result_buy)
+
+
+payload_stop_loss = {
+            'side': 'SELL',
+            'type': 'STOP_LOSS_LIMIT',
+            "timeInForce": "GTC",
+            'quantity': quantity,
+            'price': '1860',  # actual price for stop loss
+            'stopPrice': '1861'  # when it got activated
+        }
+#result_sell = eth.open_position(payload_stop_loss)
+#print("STOP LOSS:", result_sell)
+
+cancel_order = {
+            'orderId': 1580099579
+}
+
+result_delete = eth.delete_existing_order(cancel_order)
+print(result_delete)
+result ={}
+result['orderId'] = 1
+list_of_stop_loss_orders = [{'orderId':result['orderId']}]
+
 
 current_price = 2079
 stop_loss_price = current_price * 0.985
