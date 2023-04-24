@@ -17,12 +17,12 @@ class PositionManagement:
         self.max_positions = 2  # maximum number of positions that can be open simultaneously
         self.stop_loss = 0.985  # coefficient for stop loss price
         self.take_profit = 1.05
-        self.lot_one = 0.05
-        self.lot_two = 0.02
+        self.lot_one = 0.1
+        self.lot_two = 0.01
         self.lot_three = 0.01
         self.stop_order_activate_price = 0.99  # coefficient when stop loss order get activated
 
-        self.tg_switch = False
+        self.tg_switch = True
         self.tg_bot = TelegramBot()
         self.introduction()
 

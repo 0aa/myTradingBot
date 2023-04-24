@@ -102,8 +102,8 @@ def backtest_strategy(obj, simulation_type='live', strategy=ChannelSlope):
 def main():
     SYMBOL = 'ETHUSD'
     LIMIT = '100'
-    TIMEFRAME = '1h'
-    # time YYYY,M,D
+    TIMEFRAME = '15m'
+    # time YYYY-M-D
 
     START_TIME = '2023-4-1'
     END_TIME = '2023-4-20'  # optional

@@ -12,6 +12,7 @@ from multiprocessing import Pool
 from backtest.backtest import Backtest
 from brokers.binance import Binance
 from strategies.channelSlope import ChannelSlope
+from strategies.ripsterClouds import ripsterClouds
 
 
 class Optimization:
@@ -86,7 +87,8 @@ class Optimization:
         montecarlo_backtest = Backtest(self.strategy)
 
         # set random values for the backtest and strategy
-        params_strategy = self.set_random_ChannelSlope_values(self.strategy)
+        #params_strategy = self.set_random_ChannelSlope_values(self.strategy)  #  Values for ChannelSlope only
+        params_strategy = "empty"
         params_backtest = self.set_random_backtest_values(montecarlo_backtest)
 
         profit_loss = montecarlo_backtest.run_live_simulation()
@@ -116,13 +118,13 @@ class Optimization:
         return params
 
     def set_random_backtest_values(self, montecarlo_backtest):
-        p1 = 15000   # max_amount
-        p2 = 3  # (np.random.uniform(1, 10))  # max_positions
-        p3 = 0.985 # round(np.random.uniform(0.9, 0.999), 3)  # stop_loss
-        p4 = 1.1  # round(np.random.uniform(1.001, 1.100), 3)  # take_profit
-        p5 = 5  # round(np.random.uniform(0.1, 5), 2)  # lot_one
-        p6 = 1  # round(np.random.uniform(0.1, 5), 2)  # lot_two
-        p7 = 1  # round(np.random.uniform(0.1, 5), 2)  # lot_three
+        p1 = 200   # max_amount
+        p2 = 2  # (np.random.uniform(1, 10))  # max_positions
+        p3 = 0.98 #  round(np.random.uniform(0.9, 0.999), 3)  # stop_loss
+        p4 = 1.05 #  round(np.random.uniform(1.001, 1.100), 3)  # take_profit
+        p5 = 0.05  # round(np.random.uniform(0.1, 5), 2)  # lot_one
+        p6 = 0.01  # round(np.random.uniform(0.1, 5), 2)  # lot_two
+        p7 = 0.01  # round(np.random.uniform(0.1, 5), 2)  # lot_three
         params = [p1, p2, p3, p4, p5, p6, p7]
 
         ##params = [15000, 3, 0.985, 1.01, 5, 1, 1]
@@ -169,8 +171,8 @@ if __name__ == '__main__':
 
     SYMBOL = 'ETHUSDT'
     LIMIT = '1000'
-    TIMEFRAME = '1h'
-    # time YYYY,M,D
+    TIMEFRAME = '15m'
+    # time YYYY-M-D
     START_TIME = '2023-4-1'
     END_TIME = '2023-4-15'  # optional
     # create class object with the data we need
@@ -178,7 +180,8 @@ if __name__ == '__main__':
     # create the dataframe
     eth_test = Binance(SYMBOL, TIMEFRAME, LIMIT, START_TIME, END_TIME)
     # create strategy class
-    strategy = ChannelSlope(eth_test)  # pass the DataStream obj to the strategy class
+    # strategy = ChannelSlope(eth_test)  # pass the DataStream obj to the strategy class
+    strategy = ripsterClouds(eth_test)  # pass the DataStream obj to the strategy class
 
     optimize = Optimization(strategy)
     # optimize.build_plot()
