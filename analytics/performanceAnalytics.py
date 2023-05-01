@@ -3,8 +3,18 @@ import numpy as np
 
 
 class TradeAnalysis:
-    def __init__(self, df):
+    def __init__(self, df, position_vals):
         self.df = df
+        self.set_position_params(position_vals)
+
+    def set_position_params(self, position_vals):
+        self.max_amount, \
+        self.max_positions, \
+        self.stop_loss, \
+        self.take_profit, \
+        self.lot_one, \
+        self.lot_two, \
+        self.lot_three = position_vals
 
     def modify_df(self):
         self.df.loc[(self.df['Signal'] == 'CLOSE'), 'Max Invest'] = self.df['Amount'] * self.df['Price']
@@ -93,8 +103,8 @@ class TradeAnalysis:
             f"Total Profit Loss: {round(self.total_profit_loss(),2)} USD\n"
             f"Win/Loss Ratio: {self.win_loss_ratio()}\n"
             f"Average Holding Period: {self.average_holding_period()}\n"
-            f"Total Return: {round(self.total_return(initial_capital=220) * 100, 2)}%\n"
-            f"Annualized Return: {round(self.annualized_return(initial_capital=220, num_days=365) * 100, 2)}%\n"
+            f"Total Return: {round(self.total_return(initial_capital=self.max_amount) * 100, 2)}%\n"
+            f"Annualized Return: {round(self.annualized_return(initial_capital=self.max_amount, num_days=365) * 100, 2)}%\n"
             f"Sharpe Ratio: {round(self.sharpe_ratio(risk_free_rate=0.04), 3)} => {self.sharpe_ratio_meaning()}\n"
             f"Max Drawdown: {round(self.calculate_drawdown(), 2)}%\n"
             f"Avg Daily Return: {round(self.avg_daily_return(), 2)}%\n"

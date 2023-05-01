@@ -22,7 +22,7 @@ class PositionManagement:
         self.lot_three = 0.01
         self.stop_order_activate_price = 0.99  # coefficient when stop loss order get activated
 
-        self.tg_switch = True
+        self.tg_switch = False
         self.tg_bot = TelegramBot()
         self.introduction()
 
@@ -46,16 +46,20 @@ class PositionManagement:
 
                 # check if stop loss
                 loss_profit_signal = self.is_stop_loss_or_take_profit(current_price, average_price)
+
                 if loss_profit_signal:
                     signal = loss_profit_signal
 
+
                 if signal == 'BUY' and len(self.positions) < self.max_positions:
                     return self.handle_buy_signal(signal, current_price, current_time)
+
+
                 elif signal in ('CLOSE', 'STOP LOSS', 'TAKE PROFIT'):
                     return self.handle_close_signal(signal, current_price, current_time)
         except Exception as e:
             self.tg_bot.send_message(f"Error while applying strategy: {e}")
-            raise Exception(f'"Error while applying strategy')
+            raise Exception(f'"Error while applying strategy: {e}')
 
     def handle_buy_signal(self, signal, current_price, current_time):
         buy_quantity = self.get_buy_amount()
@@ -64,7 +68,6 @@ class PositionManagement:
         if total_investments < self.max_amount:
             self.positions.append((buy_quantity, current_price))
             self.record_statistics(signal, current_time, current_price, buy_quantity)
-
             buy_payload = self.buy_sell_market_payload("BUY", buy_quantity)
             stop_loss_payload = self.stop_loss_payload(current_price, buy_quantity)
 

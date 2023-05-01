@@ -10,8 +10,6 @@ from finta import TA
 
 from scipy.stats import linregress
 
-from playground.tradingzone import Tradingzone
-
 np.seterr(divide='ignore', invalid='ignore')
 
 

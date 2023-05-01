@@ -36,7 +36,7 @@ class Backtest:
     def run_live_simulation(self):
         source_df = self.strategy.dataframe
         destination_df = pd.DataFrame(columns=source_df.columns)
-        max_rows = 60
+        max_rows = 100
         # loop through each row in the source DataFrame and transfer it to the destination DataFrame
         for i, row in source_df.iterrows():
             # append the row to the destination DataFrame
@@ -73,9 +73,9 @@ class Backtest:
 ''' obj - is DataStream object (eth, shib, etc.)'''
 
 
-def backtest_strategy(obj, simulation_type='live', strategy=ChannelSlope):
+def backtest_strategy(broker, simulation_type='live', strategy=ChannelSlope):
     # Pass the DataStream obj to the strategy class
-    apply_strategy = strategy(obj)
+    apply_strategy = strategy(broker)
     # set random custom values of the strategy
     params = [-15, 22, 0.35, 0.32, 0, 6, 10]
     #apply_strategy.set_custom_vals_opt(params)
@@ -84,14 +84,15 @@ def backtest_strategy(obj, simulation_type='live', strategy=ChannelSlope):
     # set random custom values of the money/pos management
     # optimized: [15000, 3, 0.985, 1.1, 5, 1, 1]
     # prod test: [220, 1, 0.985, 1.1, 0.1, 0.1, 0.1]
-    vals = [200, 2, 0.985, 1.1, 0.05, 0.02, 0.1]
-    #apply_backtest.set_custom_params(vals)
+    position_vals = [2000, 2, 0.985, 1.1, 1, 0.2, 0.1]
+    apply_backtest.set_custom_params(position_vals)
 
     # Run the backtest with the appropriate method
     apply_backtest.run_live_simulation()
     # Run the analytics
     performance = apply_backtest.statistics_dataframe
-    analysis = TradeAnalysis(performance)
+
+    analysis = TradeAnalysis(performance, position_vals)
 
     analysis.modify_df()
     print(analysis.df.to_string())
@@ -101,14 +102,14 @@ def backtest_strategy(obj, simulation_type='live', strategy=ChannelSlope):
 @time_it
 def main():
     SYMBOL = 'ETHUSD'
-    LIMIT = '100'
-    TIMEFRAME = '15m'
+    LIMIT = '500'
+    TIMEFRAME = '1h'
     # time YYYY-M-D
 
     START_TIME = '2023-4-1'
-    END_TIME = '2023-4-20'  # optional
+    END_TIME = '2023-4-28'  # optional
 
-    eth_test = Binance(SYMBOL, TIMEFRAME, LIMIT, START_TIME, END_TIME)
+    eth_test = Binance(SYMBOL, TIMEFRAME, LIMIT)
     backtest_strategy(eth_test, 'live', strategy=ripsterClouds)
 
     return
