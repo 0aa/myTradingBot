@@ -88,8 +88,11 @@ class Optimization:
 
         # set random values for the backtest and strategy
         #params_strategy = self.set_random_ChannelSlope_values(self.strategy)  #  Values for ChannelSlope only
-        params_strategy = "empty"
-        params_backtest = self.set_random_backtest_values(montecarlo_backtest)
+        params_strategy = self.set_random_ripsterClouds_values()
+        params_backtest = self.set_random_backtest_values()
+
+        self.strategy.set_custom_vals_opt(params_strategy)
+        montecarlo_backtest.set_custom_params(params_backtest)
 
         profit_loss = montecarlo_backtest.run_live_simulation()
         analytics_df = montecarlo_backtest.statistics_dataframe
@@ -117,20 +120,23 @@ class Optimization:
         strategy.set_custom_vals_opt(params)
         return params
 
-    def set_random_backtest_values(self, montecarlo_backtest):
-        p1 = 200   # max_amount
+    def set_random_ripsterClouds_values(self):
+        """ default params = [72, 0, 14, 20] """
+        p1 = int(np.random.uniform(30, 89))  # roc_period
+        p2 = np.random.uniform(-30, 30)  # roc_tier
+        p3 = int(np.random.uniform(3, 50))  # adx_period
+        p4 = np.random.uniform(3, 50)  # adx_tier
+        return [p1, p2, p3, p4]
+
+    def set_random_backtest_values(self):
+        p1 = 2000   # max_amount
         p2 = 2  # (np.random.uniform(1, 10))  # max_positions
         p3 = 0.98 #  round(np.random.uniform(0.9, 0.999), 3)  # stop_loss
         p4 = 1.05 #  round(np.random.uniform(1.001, 1.100), 3)  # take_profit
-        p5 = 0.05  # round(np.random.uniform(0.1, 5), 2)  # lot_one
+        p5 = 1  # round(np.random.uniform(0.1, 5), 2)  # lot_one
         p6 = 0.01  # round(np.random.uniform(0.1, 5), 2)  # lot_two
         p7 = 0.01  # round(np.random.uniform(0.1, 5), 2)  # lot_three
-        params = [p1, p2, p3, p4, p5, p6, p7]
-
-        ##params = [15000, 3, 0.985, 1.01, 5, 1, 1]
-
-        montecarlo_backtest.set_custom_params(params)
-        return params
+        return [p1, p2, p3, p4, p5, p6, p7]
 
     def print_results(self):
         self.optimization_result = self.optimization_result.sort_values('Profit', ascending=False)
@@ -169,12 +175,13 @@ if __name__ == '__main__':
     # Call the minimize function
     start_time = datetime.now()
 
+
     SYMBOL = 'ETHUSDT'
     LIMIT = '1000'
     TIMEFRAME = '15m'
     # time YYYY-M-D
     START_TIME = '2023-4-1'
-    END_TIME = '2023-4-15'  # optional
+    END_TIME = '2023-5-15'  # optional
     # create class object with the data we need
 
     # create the dataframe
